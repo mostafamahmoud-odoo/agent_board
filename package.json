@@ -1,0 +1,51 @@
+{
+  "name": "claude-notes-panel",
+  "displayName": "Claude Notes Panel",
+  "description": "Renders Claude's planning notes as a hand-drawn whiteboard (frames, sticky notes, margin annotations) or a mermaid diagram in a side panel, with pan/zoom and fit-to-panel.",
+  "version": "0.2.0",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "claudeNotes.open",
+        "title": "Claude: Open Notes Panel"
+      },
+      {
+        "command": "claudeNotes.clear",
+        "title": "Claude: Clear Notes Panel"
+      },
+      {
+        "command": "claudeNotes.clearFeedback",
+        "title": "Claude: Clear Notes Panel Marks (answers, pen, stickies)"
+      },
+      {
+        "command": "claudeNotes.saveBoard",
+        "title": "Claude: Save Current Note to Library"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "claudeNotes.open",
+        "key": "ctrl+alt+n",
+        "mac": "cmd+alt+n"
+      }
+    ]
+  },
+  "scripts": {
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^2.24.0"
+  },
+  "publisher": "local",
+  "license": "MIT"
+}

@@ -64,6 +64,8 @@ export interface RenderMessage {
   viewingSaved?: string;
   /** Recoverable problems: the board still draws (FR-011). */
   warnings?: Warning[];
+  /** Named only in a multi-root workspace, so the user knows which folder is watched. */
+  watchedFolder?: string;
 }
 
 export interface ErrorMessage {
@@ -94,6 +96,12 @@ export interface LiveUpdatedMessage {
 export interface ThemeChangedMessage {
   type: 'themeChanged';
   kind: ThemeKind;
+  /**
+   * claudeNotes.reducedMotion = "always". VS Code's own preference already
+   * arrives as a body class; this is the per-panel override, which the webview
+   * cannot read for itself.
+   */
+  forceReducedMotion?: boolean;
 }
 
 export interface SetStyleMessage {

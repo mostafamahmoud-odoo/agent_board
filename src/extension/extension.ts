@@ -21,6 +21,10 @@ let store: BoardStore | null = null;
 let watcher: vscode.FileSystemWatcher | null = null;
 let ctx: vscode.ExtensionContext;
 
+function forceReducedMotion(): boolean {
+  return vscode.workspace.getConfiguration('claudeNotes').get<string>('reducedMotion', 'auto') === 'always';
+}
+
 function themeKind(): ThemeKind {
   switch (vscode.window.activeColorTheme.kind) {
     case vscode.ColorThemeKind.Light:
@@ -95,7 +99,7 @@ async function onMessage(raw: unknown): Promise<void> {
 
   switch (msg.type) {
     case 'ready': {
-      panel.post({ type: 'themeChanged', kind: themeKind() });
+      panel.post({ type: 'themeChanged', kind: themeKind(), forceReducedMotion: forceReducedMotion() });
       const style = vscode.workspace.getConfiguration('claudeNotes').get<RenderStyle>('defaultStyle');
       if (style) panel.post({ type: 'setStyle', style });
       await store.render();
@@ -233,8 +237,19 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Theme changes: the body class is observable in the webview, but only the
   // host can tell high-contrast light from high-contrast dark authoritatively.
+  // The per-panel reduced-motion override is a setting, so react to it too.
   context.subscriptions.push(
-    vscode.window.onDidChangeActiveColorTheme(() => panel?.post({ type: 'themeChanged', kind: themeKind() }))
+    vscode.workspace.onDidChangeConfiguration((e) => {
+      if (e.affectsConfiguration('claudeNotes.reducedMotion')) {
+        panel?.post({ type: 'themeChanged', kind: themeKind(), forceReducedMotion: forceReducedMotion() });
+      }
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveColorTheme(() =>
+      panel?.post({ type: 'themeChanged', kind: themeKind(), forceReducedMotion: forceReducedMotion() })
+    )
   );
 
   // A webview panel belongs to one window, so a second window shows nothing

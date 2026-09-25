@@ -6,7 +6,7 @@ import { describeIssues, parseBoard } from '../shared/schema.js';
 import type { NotesPanel } from './panel.js';
 import { readWhenSettled, writeJsonAtomic } from './fsAtomic.js';
 import { listLibrary, loadSpec, saveSpec } from './library.js';
-import { isWritable, notesPath } from './workspace.js';
+import { isWritable, notesPath, watchedFolderName } from './workspace.js';
 
 /**
  * Owns the live board: read -> validate -> dispatch, plus the single
@@ -72,14 +72,14 @@ export class BoardStore {
       if (saveSpec(this.lastLiveSpec)) this.panel.post({ type: 'library', items: listLibrary() });
     }
     this.lastLiveSpec = spec;
-    this.panel.post({ type: 'render', spec, generation: ++this.generation });
+    this.panel.post({ type: 'render', spec, generation: ++this.generation, watchedFolder: watchedFolderName() });
   }
 
   showSaved(file: string): boolean {
     const spec = loadSpec(file);
     if (!spec) return false;
     this.viewingSaved = file;
-    this.panel.post({ type: 'render', spec, generation: ++this.generation, viewingSaved: file });
+    this.panel.post({ type: 'render', spec, generation: ++this.generation, viewingSaved: file, watchedFolder: watchedFolderName() });
     return true;
   }
 

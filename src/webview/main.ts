@@ -40,6 +40,7 @@ let mermaidRenderer: { renderAsync(spec: BoardSpec, p: Palette): Promise<SVGSVGE
 let library: LibraryEntry[] = [];
 let feedback: FeedbackLog = { answers: [], drawings: [], stickies: [] };
 let viewingSaved: string | null = null;
+let forcedReducedMotion = false;
 
 /* ------------------------------------------------------------------ DOM */
 
@@ -148,7 +149,12 @@ function button(label: string, title: string): HTMLButtonElement {
   return b;
 }
 
-function showBanner(kind: 'error' | 'warn' | 'info', text: string, detail?: string): void {
+function showBanner(
+  kind: 'error' | 'warn' | 'info',
+  text: string,
+  detail?: string,
+  actions: { label: string; title: string; run: () => void }[] = []
+): void {
   banner.className = `banner ${kind}`;
   banner.hidden = false;
   banner.replaceChildren();
@@ -161,11 +167,18 @@ function showBanner(kind: 'error' | 'warn' | 'info', text: string, detail?: stri
     pre.textContent = detail;
     body.appendChild(pre);
   }
+  banner.appendChild(body);
+  for (const a of actions) {
+    const b = button(a.label, a.title);
+    b.className = 'primary';
+    b.onclick = a.run;
+    banner.appendChild(b);
+  }
   const close = button('Dismiss', 'Dismiss this message');
   close.onclick = () => {
     banner.hidden = true;
   };
-  banner.append(body, close);
+  banner.appendChild(close);
   announce(text, kind === 'error');
 }
 
@@ -184,7 +197,7 @@ async function draw(): Promise<void> {
   const signals = readSignals();
   palette = buildPalette(signals.kind);
   marks.setPalette(palette);
-  viewport.setReduceMotion(signals.reduceMotion);
+  viewport.setReduceMotion(forcedReducedMotion || signals.reduceMotion);
 
   const effective: RenderStyle = spec.style === 'mermaid' ? 'mermaid' : style;
 
@@ -423,7 +436,8 @@ canvas.addEventListener('keydown', (e) => {
 
 observeTheme((s) => {
   palette = buildPalette(s.kind);
-  viewport.setReduceMotion(s.reduceMotion);
+  marks.setPalette(palette);
+  viewport.setReduceMotion(forcedReducedMotion || s.reduceMotion);
   // Redraw WITHOUT re-fitting: a theme change must not move the user's view.
   const keep = viewport.state;
   void draw().then(() => viewport.restore(keep));
@@ -444,7 +458,20 @@ window.addEventListener('message', (ev: MessageEvent) => {
       highestGeneration = m.generation;
       spec = m.spec;
       viewingSaved = m.viewingSaved ?? null;
-      if (viewingSaved) showBanner('info', `Viewing a saved board. Live updates are paused.`);
+      folderEl.textContent = m.watchedFolder ? `— watching ${m.watchedFolder}` : '';
+      folderEl.title = m.watchedFolder
+        ? `Only the first workspace folder is watched. This panel is showing "${m.watchedFolder}".`
+        : '';
+      if (viewingSaved) {
+        showBanner('info', 'Viewing a saved board. Live updates are paused.', undefined, [
+          { label: 'Back to live', title: 'Return to the board Claude is writing', run: () => post({ type: 'backToLive' }) },
+          {
+            label: 'Resume editing',
+            title: 'Make this saved board the live one again',
+            run: () => post({ type: 'resumeLive', file: viewingSaved! })
+          }
+        ]);
+      }
       if (m.warnings?.length) showBanner('warn', 'This board has problems; the rest still drew.', warningText(m.warnings));
       void draw();
       return;
@@ -470,10 +497,15 @@ window.addEventListener('message', (ev: MessageEvent) => {
       renderLibrary();
       return;
     case 'liveUpdated':
-      showBanner('info', 'The live board changed. Close this saved board to see it.');
+      showBanner('info', 'The live board changed while you are viewing a saved one.', undefined, [
+        { label: 'Show it', title: 'Switch to the live board', run: () => post({ type: 'backToLive' }) }
+      ]);
       return;
     case 'themeChanged':
       palette = buildPalette(m.kind);
+      marks.setPalette(palette);
+      forcedReducedMotion = m.forceReducedMotion === true;
+      viewport.setReduceMotion(forcedReducedMotion || readSignals().reduceMotion);
       void draw();
       return;
     case 'setStyle':

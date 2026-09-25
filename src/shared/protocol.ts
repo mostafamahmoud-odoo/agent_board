@@ -101,6 +101,12 @@ export interface SetStyleMessage {
   style: RenderStyle;
 }
 
+/** Viewport commands driven from the palette rather than the panel toolbar. */
+export interface ViewportMessage {
+  type: 'viewport';
+  action: 'fit' | 'resetZoom' | 'copyDescription';
+}
+
 export type HostToWebview =
   | RenderMessage
   | ErrorMessage
@@ -109,7 +115,8 @@ export type HostToWebview =
   | LibraryMessage
   | LiveUpdatedMessage
   | ThemeChangedMessage
-  | SetStyleMessage;
+  | SetStyleMessage
+  | ViewportMessage;
 
 /* ------------------------------------------------------------------ */
 /* Webview -> Host                                                     */
@@ -187,6 +194,12 @@ export interface AnnounceMessage {
   assertive?: boolean;
 }
 
+/** The webview handing back the board's text alternative for the clipboard. */
+export interface DescriptionMessage {
+  type: 'description';
+  text: string;
+}
+
 export type WebviewToHost =
   | ReadyMessage
   | FeedbackMessage
@@ -198,7 +211,8 @@ export type WebviewToHost =
   | BackToLiveMessage
   | CopyMentionMessage
   | StyleChangedMessage
-  | AnnounceMessage;
+  | AnnounceMessage
+  | DescriptionMessage;
 
 /* ------------------------------------------------------------------ */
 /* Guards                                                              */

@@ -1,0 +1,26 @@
+{
+  "style": "sketchy",
+  "title": "all kinds and shapes",
+  "frames": [
+    { "id": "k", "title": "kinds", "nodes": ["base","problem","fix","data","accent","note","muted"] },
+    { "id": "s", "title": "shapes", "flow": "row", "nodes": ["rect","round","pill","noteS","ellipse","diamond","cyl"] }
+  ],
+  "nodes": [
+    { "id": "base", "label": "base", "kind": "base" },
+    { "id": "problem", "label": "problem", "kind": "problem" },
+    { "id": "fix", "label": "fix", "kind": "fix" },
+    { "id": "data", "label": "data", "kind": "data", "sub": "with a sub line" },
+    { "id": "accent", "label": "accent", "kind": "accent", "badge": "badge" },
+    { "id": "note", "label": "note", "kind": "note" },
+    { "id": "muted", "label": "muted", "kind": "muted", "hatch": true },
+    { "id": "rect", "label": "rect", "shape": "rect" },
+    { "id": "round", "label": "round", "shape": "round" },
+    { "id": "pill", "label": "pill", "shape": "pill" },
+    { "id": "noteS", "label": "note shape", "shape": "note" },
+    { "id": "ellipse", "label": "ellipse", "shape": "ellipse" },
+    { "id": "diamond", "label": "diamond", "shape": "diamond" },
+    { "id": "cyl", "label": "cyl", "shape": "cyl" }
+  ],
+  "edges": [{ "from": "base", "to": "problem", "label": "edge" }],
+  "legend": [{ "kind": "problem", "label": "broken" }, { "kind": "fix", "label": "proposed" }]
+}

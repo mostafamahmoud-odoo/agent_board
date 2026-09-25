@@ -18,6 +18,6 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["src/shared/**/*.ts", "src/extension/**/*.ts", "test/**/*.ts"],
-  "exclude": ["src/webview/**", "node_modules", "dist"]
+  "include": ["src/shared/**/*.ts", "src/extension/**/*.ts"],
+  "exclude": ["src/webview/**", "test/**", "node_modules", "dist"]
 }

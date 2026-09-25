@@ -1,0 +1,21 @@
+{
+  "style": "sketchy",
+  "title": "annotation extremes",
+  "frames": [{ "id": "f", "title": "tight frame", "nodes": ["a","b"] }],
+  "nodes": [
+    { "id": "a", "label": "anchor a" },
+    { "id": "b", "label": "anchor b (last in a tight frame)" }
+  ],
+  "annotations": [
+    { "text": "left side note that is quite wide indeed", "at": "a", "place": "left" },
+    { "text": "right side", "at": "a", "place": "right" },
+    { "text": "above", "at": "a", "place": "above" },
+    { "text": "below the last item - this is the one\nthe owner-frame clamp moves", "at": "b", "place": "below" },
+    { "text": "frame level below", "atFrame": "f", "place": "below" }
+  ],
+  "legend": [
+    { "kind": "base", "label": "a deliberately long legend label to overflow the board width" },
+    { "kind": "problem", "label": "another long legend label for the same reason" },
+    { "kind": "fix", "label": "and a third one to be sure it overflows" }
+  ]
+}

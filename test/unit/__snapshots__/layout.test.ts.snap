@@ -1,0 +1,928 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`golden corpus (SC-005: zero migration for existing boards) > lays out all-kinds.json and matches its snapshot 1`] = `
+{
+  "annotations": [],
+  "bounds": {
+    "maxX": 2042,
+    "maxY": 703,
+    "minX": 0,
+    "minY": 0,
+  },
+  "edges": [
+    {
+      "from": "base",
+      "to": "problem",
+    },
+  ],
+  "elements": [
+    {
+      "box": [
+        16,
+        46,
+        270,
+        43,
+      ],
+      "id": "base",
+      "type": "node",
+    },
+    {
+      "box": [
+        16,
+        109,
+        270,
+        43,
+      ],
+      "id": "problem",
+      "type": "node",
+    },
+    {
+      "box": [
+        16,
+        172,
+        270,
+        43,
+      ],
+      "id": "fix",
+      "type": "node",
+    },
+    {
+      "box": [
+        16,
+        235,
+        270,
+        62,
+      ],
+      "id": "data",
+      "type": "node",
+    },
+    {
+      "box": [
+        16,
+        317,
+        270,
+        47,
+      ],
+      "id": "accent",
+      "type": "node",
+    },
+    {
+      "box": [
+        16,
+        384,
+        270,
+        43,
+      ],
+      "id": "note",
+      "type": "node",
+    },
+    {
+      "box": [
+        16,
+        447,
+        270,
+        43,
+      ],
+      "id": "muted",
+      "type": "node",
+    },
+    {
+      "box": [
+        16,
+        586,
+        270,
+        43,
+      ],
+      "id": "rect",
+      "type": "node",
+    },
+    {
+      "box": [
+        306,
+        586,
+        270,
+        43,
+      ],
+      "id": "round",
+      "type": "node",
+    },
+    {
+      "box": [
+        596,
+        586,
+        270,
+        43,
+      ],
+      "id": "pill",
+      "type": "node",
+    },
+    {
+      "box": [
+        886,
+        586,
+        270,
+        43,
+      ],
+      "id": "noteS",
+      "type": "node",
+    },
+    {
+      "box": [
+        1176,
+        586,
+        270,
+        59,
+      ],
+      "id": "ellipse",
+      "type": "node",
+    },
+    {
+      "box": [
+        1466,
+        586,
+        270,
+        59,
+      ],
+      "id": "diamond",
+      "type": "node",
+    },
+    {
+      "box": [
+        1756,
+        586,
+        270,
+        43,
+      ],
+      "id": "cyl",
+      "type": "node",
+    },
+  ],
+  "frames": [
+    {
+      "box": [
+        0,
+        0,
+        302,
+        506,
+      ],
+      "id": "k",
+      "ids": [
+        "base",
+        "problem",
+        "fix",
+        "data",
+        "accent",
+        "note",
+        "muted",
+      ],
+    },
+    {
+      "box": [
+        0,
+        540,
+        2042,
+        121,
+      ],
+      "id": "s",
+      "ids": [
+        "rect",
+        "round",
+        "pill",
+        "noteS",
+        "ellipse",
+        "diamond",
+        "cyl",
+      ],
+    },
+  ],
+  "legend": {
+    "w": 184.4,
+    "x": 0,
+    "y": 683,
+  },
+  "warnings": [],
+}
+`;
+
+exports[`golden corpus (SC-005: zero migration for existing boards) > lays out annotation-edges.json and matches its snapshot 1`] = `
+{
+  "annotations": [
+    {
+      "anchor": "end",
+      "lines": 2,
+      "x": 245.6,
+      "y": 121.5,
+    },
+    {
+      "anchor": "start",
+      "lines": 1,
+      "x": 547.6,
+      "y": 121.5,
+    },
+    {
+      "anchor": "start",
+      "lines": 1,
+      "x": 261.6,
+      "y": 34,
+    },
+    {
+      "anchor": "start",
+      "lines": 3,
+      "x": 261.6,
+      "y": 261,
+    },
+    {
+      "anchor": "start",
+      "lines": 1,
+      "x": 245.6,
+      "y": 263,
+    },
+  ],
+  "bounds": {
+    "maxX": 1114.4,
+    "maxY": 349,
+    "minX": 26,
+    "minY": 16,
+  },
+  "edges": [],
+  "elements": [
+    {
+      "box": [
+        261.6,
+        100,
+        270,
+        43,
+      ],
+      "id": "a",
+      "type": "node",
+    },
+    {
+      "box": [
+        261.6,
+        163,
+        270,
+        62,
+      ],
+      "id": "b",
+      "type": "node",
+    },
+  ],
+  "frames": [
+    {
+      "box": [
+        245.6,
+        54,
+        302,
+        187,
+      ],
+      "id": "f",
+      "ids": [
+        "a",
+        "b",
+      ],
+    },
+  ],
+  "legend": {
+    "w": 1088.4,
+    "x": 26,
+    "y": 329,
+  },
+  "warnings": [],
+}
+`;
+
+exports[`golden corpus (SC-005: zero migration for existing boards) > lays out label-rendering-stress-test-2026-09-07T08-02-15-150Z.json and matches its snapshot 1`] = `
+{
+  "annotations": [],
+  "bounds": {
+    "maxX": 720,
+    "maxY": 390,
+    "minX": 40,
+    "minY": 20,
+  },
+  "edges": [
+    {
+      "from": "t",
+      "to": "b",
+    },
+    {
+      "from": "b",
+      "to": "d",
+    },
+  ],
+  "elements": [
+    {
+      "box": [
+        265,
+        20,
+        230,
+        43,
+      ],
+      "id": "t",
+      "type": "node",
+    },
+    {
+      "box": [
+        40,
+        150,
+        200,
+        70,
+      ],
+      "id": "a",
+      "type": "node",
+    },
+    {
+      "box": [
+        280,
+        150,
+        200,
+        70,
+      ],
+      "id": "b",
+      "type": "node",
+    },
+    {
+      "box": [
+        520,
+        150,
+        200,
+        81,
+      ],
+      "id": "c",
+      "type": "node",
+    },
+    {
+      "box": [
+        280,
+        320,
+        200,
+        70,
+      ],
+      "id": "d",
+      "type": "node",
+    },
+  ],
+  "frames": [],
+  "legend": null,
+  "warnings": [],
+}
+`;
+
+exports[`golden corpus (SC-005: zero migration for existing boards) > lays out label-rendering-stress-test-2026-09-07T08-02-40-090Z.json and matches its snapshot 1`] = `
+{
+  "annotations": [],
+  "bounds": {
+    "maxX": 720,
+    "maxY": 390,
+    "minX": 40,
+    "minY": 20,
+  },
+  "edges": [
+    {
+      "from": "t",
+      "to": "b",
+    },
+    {
+      "from": "b",
+      "to": "d",
+    },
+  ],
+  "elements": [
+    {
+      "box": [
+        265,
+        20,
+        230,
+        43,
+      ],
+      "id": "t",
+      "type": "node",
+    },
+    {
+      "box": [
+        40,
+        150,
+        200,
+        70,
+      ],
+      "id": "a",
+      "type": "node",
+    },
+    {
+      "box": [
+        280,
+        150,
+        200,
+        70,
+      ],
+      "id": "b",
+      "type": "node",
+    },
+    {
+      "box": [
+        520,
+        150,
+        200,
+        81,
+      ],
+      "id": "c",
+      "type": "node",
+    },
+    {
+      "box": [
+        280,
+        320,
+        200,
+        70,
+      ],
+      "id": "d",
+      "type": "node",
+    },
+  ],
+  "frames": [],
+  "legend": null,
+  "warnings": [],
+}
+`;
+
+exports[`golden corpus (SC-005: zero migration for existing boards) > lays out plan-board.json and matches its snapshot 1`] = `
+{
+  "annotations": [
+    {
+      "anchor": "end",
+      "lines": 3,
+      "x": 184,
+      "y": 204.5,
+    },
+    {
+      "anchor": "end",
+      "lines": 5,
+      "x": 268.7,
+      "y": 1149.5,
+    },
+    {
+      "anchor": "start",
+      "lines": 6,
+      "x": 604.7,
+      "y": 1605,
+    },
+    {
+      "anchor": "start",
+      "lines": 3,
+      "x": 922.7,
+      "y": 1224,
+    },
+    {
+      "anchor": "start",
+      "lines": 4,
+      "x": 906.7,
+      "y": 1528.5,
+    },
+  ],
+  "bounds": {
+    "maxX": 1134.6,
+    "maxY": 1747,
+    "minX": 26,
+    "minY": 0,
+  },
+  "edges": [
+    {
+      "from": "x0",
+      "to": "x1",
+    },
+    {
+      "from": "x1",
+      "to": "x2",
+    },
+    {
+      "from": "x2",
+      "to": "x3",
+    },
+    {
+      "from": "x2",
+      "to": "x4",
+    },
+    {
+      "from": "x2",
+      "to": "x5",
+    },
+    {
+      "from": "s0",
+      "to": "s1",
+    },
+    {
+      "from": "s1",
+      "to": "s2",
+    },
+    {
+      "from": "s2",
+      "to": "s3",
+    },
+    {
+      "from": "s3",
+      "to": "s4",
+    },
+    {
+      "from": "s4",
+      "to": "s5",
+    },
+    {
+      "from": "s5",
+      "to": "s6",
+    },
+    {
+      "from": "b3",
+      "to": "s3",
+    },
+    {
+      "from": "b1",
+      "to": "s1",
+    },
+    {
+      "from": "b7",
+      "to": "s1",
+    },
+  ],
+  "elements": [
+    {
+      "box": [
+        200,
+        46,
+        270,
+        100,
+      ],
+      "id": "p1",
+      "type": "node",
+    },
+    {
+      "box": [
+        200,
+        166,
+        270,
+        77,
+      ],
+      "id": "p2",
+      "type": "node",
+    },
+    {
+      "box": [
+        200,
+        263,
+        270,
+        62,
+      ],
+      "id": "p3",
+      "type": "node",
+    },
+    {
+      "box": [
+        200,
+        345,
+        270,
+        77,
+      ],
+      "id": "p4",
+      "type": "node",
+    },
+    {
+      "box": [
+        200,
+        442,
+        270,
+        77,
+      ],
+      "id": "p5",
+      "type": "node",
+    },
+    {
+      "box": [
+        620.7,
+        46,
+        270,
+        96,
+      ],
+      "id": "b1",
+      "type": "node",
+    },
+    {
+      "box": [
+        620.7,
+        162,
+        270,
+        115,
+      ],
+      "id": "b2",
+      "type": "node",
+    },
+    {
+      "box": [
+        620.7,
+        297,
+        270,
+        92,
+      ],
+      "id": "b3",
+      "type": "node",
+    },
+    {
+      "box": [
+        620.7,
+        409,
+        270,
+        77,
+      ],
+      "id": "b4",
+      "type": "node",
+    },
+    {
+      "box": [
+        620.7,
+        506,
+        270,
+        77,
+      ],
+      "id": "b5",
+      "type": "node",
+    },
+    {
+      "box": [
+        620.7,
+        603,
+        270,
+        77,
+      ],
+      "id": "b6",
+      "type": "node",
+    },
+    {
+      "box": [
+        620.7,
+        700,
+        270,
+        115,
+      ],
+      "id": "b7",
+      "type": "node",
+    },
+    {
+      "box": [
+        284.7,
+        911,
+        270,
+        81,
+      ],
+      "id": "x0",
+      "type": "node",
+    },
+    {
+      "box": [
+        284.7,
+        1012,
+        270,
+        77,
+      ],
+      "id": "x1",
+      "type": "node",
+    },
+    {
+      "box": [
+        284.7,
+        1109,
+        270,
+        81,
+      ],
+      "id": "x2",
+      "type": "node",
+    },
+    {
+      "box": [
+        284.7,
+        1210,
+        270,
+        77,
+      ],
+      "id": "x3",
+      "type": "node",
+    },
+    {
+      "box": [
+        284.7,
+        1307,
+        270,
+        77,
+      ],
+      "id": "x4",
+      "type": "node",
+    },
+    {
+      "box": [
+        284.7,
+        1404,
+        270,
+        77,
+      ],
+      "id": "x5",
+      "type": "node",
+    },
+    {
+      "box": [
+        620.7,
+        911,
+        270,
+        77,
+      ],
+      "id": "s0",
+      "type": "node",
+    },
+    {
+      "box": [
+        620.7,
+        1008,
+        270,
+        81,
+      ],
+      "id": "s1",
+      "type": "node",
+    },
+    {
+      "box": [
+        620.7,
+        1109,
+        270,
+        77,
+      ],
+      "id": "s2",
+      "type": "node",
+    },
+    {
+      "box": [
+        620.7,
+        1206,
+        270,
+        81,
+      ],
+      "id": "s3",
+      "type": "node",
+    },
+    {
+      "box": [
+        620.7,
+        1307,
+        270,
+        62,
+      ],
+      "id": "s4",
+      "type": "node",
+    },
+    {
+      "box": [
+        620.7,
+        1389,
+        270,
+        81,
+      ],
+      "id": "s5",
+      "type": "node",
+    },
+    {
+      "box": [
+        620.7,
+        1490,
+        270,
+        77,
+      ],
+      "id": "s6",
+      "type": "node",
+    },
+  ],
+  "frames": [
+    {
+      "box": [
+        184,
+        0,
+        302,
+        535,
+      ],
+      "id": "now",
+      "ids": [
+        "p1",
+        "p2",
+        "p3",
+        "p4",
+        "p5",
+      ],
+    },
+    {
+      "box": [
+        604.7,
+        0,
+        302,
+        831,
+      ],
+      "id": "bad",
+      "ids": [
+        "b1",
+        "b2",
+        "b3",
+        "b4",
+        "b5",
+        "b6",
+        "b7",
+      ],
+    },
+    {
+      "box": [
+        268.7,
+        865,
+        302,
+        632,
+      ],
+      "id": "pivot",
+      "ids": [
+        "x0",
+        "x1",
+        "x2",
+        "x3",
+        "x4",
+        "x5",
+      ],
+    },
+    {
+      "box": [
+        604.7,
+        865,
+        302,
+        718,
+      ],
+      "id": "ship",
+      "ids": [
+        "s0",
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+        "s5",
+        "s6",
+      ],
+    },
+  ],
+  "legend": {
+    "w": 764.6,
+    "x": 26,
+    "y": 1727,
+  },
+  "warnings": [],
+}
+`;
+
+exports[`golden corpus (SC-005: zero migration for existing boards) > lays out tables-and-screens.json and matches its snapshot 1`] = `
+{
+  "annotations": [],
+  "bounds": {
+    "maxX": 692,
+    "maxY": 352,
+    "minX": 0,
+    "minY": 0,
+  },
+  "edges": [],
+  "elements": [
+    {
+      "box": [
+        256,
+        46,
+        180,
+        104,
+      ],
+      "id": "t",
+      "type": "table",
+    },
+    {
+      "box": [
+        16,
+        170,
+        660,
+        166,
+      ],
+      "id": "sc",
+      "type": "screen",
+    },
+  ],
+  "frames": [
+    {
+      "box": [
+        0,
+        0,
+        692,
+        352,
+      ],
+      "id": "f",
+      "ids": [
+        "t",
+        "sc",
+      ],
+    },
+  ],
+  "legend": null,
+  "warnings": [],
+}
+`;

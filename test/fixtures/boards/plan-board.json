@@ -1,0 +1,365 @@
+{
+  "style": "sketchy",
+  "title": "Claude Notes Panel -> production extension",
+  "maxWidth": 1700,
+  "frames": [
+    {
+      "id": "now",
+      "title": "NOW - the prototype",
+      "row": 1,
+      "col": 1,
+      "flow": "col",
+      "nodes": [
+        "p1",
+        "p2",
+        "p3",
+        "p4",
+        "p5"
+      ]
+    },
+    {
+      "id": "bad",
+      "title": "AUDIT - what is actually broken",
+      "row": 1,
+      "col": 2,
+      "flow": "col",
+      "nodes": [
+        "b1",
+        "b2",
+        "b3",
+        "b4",
+        "b5",
+        "b6",
+        "b7"
+      ]
+    },
+    {
+      "id": "pivot",
+      "title": "THE PIVOT - split the render pass",
+      "row": 2,
+      "col": 1,
+      "flow": "col",
+      "nodes": [
+        "x0",
+        "x1",
+        "x2",
+        "x3",
+        "x4",
+        "x5"
+      ]
+    },
+    {
+      "id": "ship",
+      "title": "DELIVERY - 7 shippable stages",
+      "row": 2,
+      "col": 2,
+      "flow": "col",
+      "nodes": [
+        "s0",
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+        "s5",
+        "s6"
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "p1",
+      "label": "Claude writes .claude/notes.json",
+      "sub": "scratch board spec, overwritten every time",
+      "kind": "base",
+      "badge": "channel"
+    },
+    {
+      "id": "p2",
+      "label": "sketchy renderer",
+      "sub": "rough.js + bespoke layout, frames / tables / screens",
+      "kind": "base",
+      "shape": "round"
+    },
+    {
+      "id": "p3",
+      "label": "mermaid renderer",
+      "sub": "3.3 MB vendored, loaded eagerly",
+      "kind": "base",
+      "shape": "round"
+    },
+    {
+      "id": "p4",
+      "label": "pen, stickies, questions",
+      "sub": "-> .claude/notes_feedback.json, one-way",
+      "kind": "base"
+    },
+    {
+      "id": "p5",
+      "label": "board library",
+      "sub": ".claude/notes/<slug>.json, auto-saved on title change",
+      "kind": "base",
+      "shape": "cyl"
+    },
+    {
+      "id": "b1",
+      "label": "path traversal",
+      "sub": "extension.js:236-260 - webview filename joined unchecked; resumeLive copies any file in",
+      "kind": "problem",
+      "emphasis": true,
+      "badge": "security"
+    },
+    {
+      "id": "b2",
+      "label": "corrupt feedback = total data loss",
+      "sub": "extension.js:32-59 - parse fails -> empty object written back over every answer",
+      "kind": "problem",
+      "badge": "data loss"
+    },
+    {
+      "id": "b3",
+      "label": "theme is a luminance guess",
+      "sub": "isDarkBg() + ~50 hardcoded hex; no --vscode-* reaches the SVG; HC unhandled",
+      "kind": "problem"
+    },
+    {
+      "id": "b4",
+      "label": "zero aria, zero tabindex",
+      "sub": "board unreachable by keyboard; SVG is an unlabelled graphic",
+      "kind": "problem"
+    },
+    {
+      "id": "b5",
+      "label": "no schema validation",
+      "sub": "spec.title read outside the try; null notes.json throws uncaught",
+      "kind": "problem"
+    },
+    {
+      "id": "b6",
+      "label": "everything grows forever",
+      "sub": "feedback file, pen points, one library file per auto-save",
+      "kind": "problem"
+    },
+    {
+      "id": "b7",
+      "label": "renders dropped while panel hidden",
+      "sub": "retainContextWhenHidden + unguarded postMessage; d.ts says a hidden webview cannot be messaged",
+      "kind": "problem",
+      "badge": "from research"
+    },
+    {
+      "id": "x0",
+      "label": "today: measure + place + stroke\nare one interleaved pass",
+      "kind": "muted",
+      "hatch": true
+    },
+    {
+      "id": "x1",
+      "label": "spec",
+      "sub": "validated against a versioned schema first",
+      "kind": "accent",
+      "shape": "pill"
+    },
+    {
+      "id": "x2",
+      "label": "layout()",
+      "sub": "pure, DOM-free, style-agnostic -> LayoutResult",
+      "kind": "fix",
+      "emphasis": true,
+      "badge": "the split"
+    },
+    {
+      "id": "x3",
+      "label": "sketchy.ts",
+      "sub": "rough.js - extracted, behaviour unchanged",
+      "kind": "fix",
+      "shape": "round"
+    },
+    {
+      "id": "x4",
+      "label": "clean.ts",
+      "sub": "NEW - precise SVG, ~200 lines, same geometry",
+      "kind": "fix",
+      "shape": "round"
+    },
+    {
+      "id": "x5",
+      "label": "describe.ts",
+      "sub": "same layout -> text alternative for a screen reader",
+      "kind": "fix",
+      "shape": "note"
+    },
+    {
+      "id": "s0",
+      "label": "0 - scaffold",
+      "sub": "TS + esbuild x2 + eslint + tests + CI. No behaviour change.",
+      "kind": "data"
+    },
+    {
+      "id": "s1",
+      "label": "1 - contracts & safety",
+      "sub": "schema, atomic writes, path containment, nonce CSP",
+      "kind": "data",
+      "badge": "fixes b1 b2 b5"
+    },
+    {
+      "id": "s2",
+      "label": "2 - layout split",
+      "sub": "no user-visible output - and the one stage at risk of being skipped",
+      "kind": "data",
+      "emphasis": true
+    },
+    {
+      "id": "s3",
+      "label": "3 - theme + a11y",
+      "sub": "token palette, roving focus, 28/28 contrast gate in CI",
+      "kind": "data",
+      "badge": "fixes b3 b4"
+    },
+    {
+      "id": "s4",
+      "label": "4 - clean renderer",
+      "sub": "third style + lazy mermaid",
+      "kind": "data"
+    },
+    {
+      "id": "s5",
+      "label": "5 - feedback loop",
+      "sub": "bounded file, consumed flag, notification + handoff",
+      "kind": "data",
+      "badge": "fixes b6"
+    },
+    {
+      "id": "s6",
+      "label": "6 - publish",
+      "sub": "manifest, icon, tag -> Marketplace + Open VSX",
+      "kind": "data"
+    }
+  ],
+  "edges": [
+    {
+      "from": "x0",
+      "to": "x1",
+      "style": "dashed",
+      "label": "unpick it"
+    },
+    {
+      "from": "x1",
+      "to": "x2"
+    },
+    {
+      "from": "x2",
+      "to": "x3",
+      "kind": "fix"
+    },
+    {
+      "from": "x2",
+      "to": "x4",
+      "kind": "fix"
+    },
+    {
+      "from": "x2",
+      "to": "x5",
+      "kind": "fix"
+    },
+    {
+      "from": "s0",
+      "to": "s1"
+    },
+    {
+      "from": "s1",
+      "to": "s2"
+    },
+    {
+      "from": "s2",
+      "to": "s3",
+      "emphasis": true
+    },
+    {
+      "from": "s3",
+      "to": "s4"
+    },
+    {
+      "from": "s4",
+      "to": "s5"
+    },
+    {
+      "from": "s5",
+      "to": "s6"
+    },
+    {
+      "from": "b3",
+      "to": "s3",
+      "style": "dotted",
+      "kind": "fix"
+    },
+    {
+      "from": "b1",
+      "to": "s1",
+      "style": "dotted",
+      "kind": "fix"
+    },
+    {
+      "from": "b7",
+      "to": "s1",
+      "style": "dotted",
+      "kind": "fix"
+    }
+  ],
+  "annotations": [
+    {
+      "text": "kept, not replaced -\nExcalidraw rejected\nfor this iteration",
+      "at": "p2",
+      "place": "left",
+      "kind": "accent",
+      "arrowTo": "p2"
+    },
+    {
+      "text": "one implementation of geometry,\nfour consumers. This is what makes\nthe third style ~200 lines\ninstead of a second engine.",
+      "at": "x2",
+      "place": "left",
+      "kind": "fix",
+      "arrowTo": "x2"
+    },
+    {
+      "text": "no constitution is ratified -\n.specify/memory/constitution.md is\nstill all [PLACEHOLDER].\nRun /speckit-constitution before implement.",
+      "atFrame": "ship",
+      "place": "below",
+      "kind": "problem"
+    },
+    {
+      "text": "Node here is 18.19.1.\nvsce 4 needs 22+.\nFirst task, not a checkbox.",
+      "atFrame": "ship",
+      "place": "right",
+      "kind": "problem"
+    },
+    {
+      "text": "Azure DevOps PATs retired\n1 Dec 2026 - ~10 weeks.\nBuild the release on OIDC\nor rebuild it in January.",
+      "at": "s6",
+      "place": "right",
+      "kind": "problem",
+      "arrowTo": "s6"
+    }
+  ],
+  "legend": [
+    {
+      "kind": "base",
+      "label": "exists today"
+    },
+    {
+      "kind": "problem",
+      "label": "defect found in the code"
+    },
+    {
+      "kind": "fix",
+      "label": "proposed structure"
+    },
+    {
+      "kind": "data",
+      "label": "delivery stage"
+    },
+    {
+      "kind": "muted",
+      "label": "being removed"
+    }
+  ]
+}

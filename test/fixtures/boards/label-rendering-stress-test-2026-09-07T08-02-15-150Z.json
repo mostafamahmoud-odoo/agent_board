@@ -1,0 +1,65 @@
+{
+  "style": "sketchy",
+  "title": "Label rendering — stress test",
+  "width": 760,
+  "height": 420,
+  "nodes": [
+    {
+      "id": "t",
+      "label": "no hachure diagonal",
+      "x": 265,
+      "y": 20,
+      "w": 230,
+      "h": 40,
+      "color": "#e0b0ff"
+    },
+    {
+      "id": "a",
+      "label": "wraps to two lines here",
+      "x": 40,
+      "y": 150,
+      "w": 200,
+      "h": 70,
+      "color": "orange"
+    },
+    {
+      "id": "b",
+      "label": "explicit\nline break",
+      "x": 280,
+      "y": 150,
+      "w": 200,
+      "h": 70,
+      "color": "#7fd1b9"
+    },
+    {
+      "id": "c",
+      "label": "far too much text to ever fit in this small box",
+      "x": 520,
+      "y": 150,
+      "w": 200,
+      "h": 70,
+      "color": "#8ab4f8"
+    },
+    {
+      "id": "d",
+      "label": "fits exactly",
+      "x": 280,
+      "y": 320,
+      "w": 200,
+      "h": 70,
+      "color": "orange"
+    }
+  ],
+  "edges": [
+    {
+      "from": "t",
+      "to": "b",
+      "label": "solid fill"
+    },
+    {
+      "from": "b",
+      "to": "d",
+      "label": "wrapped"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "//": "Unit tests import webview code, so they need DOM in `lib` — but they also read fixtures with node:fs, so they need node types. Neither the host config (no DOM) nor the webview config (no node) can host them, hence a third config.",
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "include": ["./**/*.ts", "../src/**/*.ts"]
+}

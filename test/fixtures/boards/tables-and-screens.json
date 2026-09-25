@@ -1,0 +1,17 @@
+{
+  "style": "sketchy",
+  "title": "tables and screens",
+  "frames": [{ "id": "f", "title": "views", "items": ["t","sc"] }],
+  "tables": [{
+    "id": "t", "title": "procurement.line", "kind": "base",
+    "columns": [{ "label": "id" }, { "label": "product" }, { "label": "qty", "align": "right" }],
+    "rows": [["3886","1-1375055-3","90"], { "kind": "problem", "cells": ["3887","6457567-4",{"text":"300","bold":true}] }]
+  }],
+  "screens": [{
+    "id": "sc", "breadcrumb": "PM / 122",
+    "buttons": [{ "label": "Get From Stock", "primary": true }, "Create"],
+    "statusbar": [{ "label": "Draft" }, { "label": "In Progress", "active": true }],
+    "groups": [{ "title": "Header", "columns": 2, "fields": [{ "label": "SO", "value": "SO/2026/00085" }, { "label": "Customer", "value": "E-Bank", "kind": "data" }] }],
+    "footer": "5 rows"
+  }]
+}

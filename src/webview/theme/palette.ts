@@ -1,4 +1,3 @@
-/* eslint-disable no-restricted-syntax -- this is THE file colour lives in (FR-021) */
 import type { Kind, ThemeKind } from '../../shared/types.js';
 import { token } from './tokens.js';
 

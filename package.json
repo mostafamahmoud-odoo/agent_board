@@ -13,7 +13,7 @@
     "Notebooks",
     "Other"
   ],
-  "main": "./src/extension.js",
+  "main": "./dist/extension.js",
   "activationEvents": [
     "workspaceContains:.claude/notes.json"
   ],
@@ -72,6 +72,5 @@
     "ovsx": "^1.2.0",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
-  },
-  "//main": "TEMPORARY: stays on the un-ported JS until Phase 2 (T029) lands dist/extension.js. Switching it early would leave the extension unloadable between phases."
+  }
 }

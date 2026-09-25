@@ -1,4 +1,5 @@
 import * as esbuild from 'esbuild';
+import { rmSync } from 'node:fs';
 
 const production = process.argv.includes('--production');
 const watch = process.argv.includes('--watch');
@@ -68,6 +69,8 @@ const webviewConfig = {
   ...common,
   entryPoints: ['src/webview/main.ts'],
   outfile: 'dist/webview.js',
+  // `import './styles.css'` emits dist/webview.css alongside the bundle.
+  loader: { '.css': 'css' },
   platform: 'browser',
   format: 'esm',
   target: ['chrome108'],
@@ -75,6 +78,10 @@ const webviewConfig = {
 };
 
 async function main() {
+  // Clean first: a --production build emits no sourcemaps, but stale maps
+  // from an earlier dev build would otherwise still be sitting in dist/ and
+  // get packaged.
+  rmSync('dist', { recursive: true, force: true });
   const configs = [extensionConfig, webviewConfig];
   if (watch) {
     const ctxs = await Promise.all(configs.map((c) => esbuild.context(c)));

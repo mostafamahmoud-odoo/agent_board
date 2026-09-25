@@ -1041,6 +1041,7 @@
       const fo = document.createElementNS(SVG_NS, 'foreignObject');
       fo.setAttribute('x', x); fo.setAttribute('y', y);
       fo.setAttribute('width', 180); fo.setAttribute('height', 96);
+      fo.setAttribute('class', 'sticky-fo');
       fo.style.pointerEvents = 'auto';
       const div = document.createElement('div');
       div.className = 'sticky-note';
@@ -1257,13 +1258,25 @@
     document.getElementById('reset').onclick = () => { scale = 1; tx = 8; ty = 8; applyTransform(); };
 
     canvas.addEventListener('wheel', (ev) => {
+      if (onOverlaidUI(ev)) return; // let the panels scroll their own content
       ev.preventDefault();
       const r = canvas.getBoundingClientRect();
       zoomAt(ev.deltaY < 0 ? 1.12 : 1 / 1.12, ev.clientX - r.left, ev.clientY - r.top);
     }, { passive: false });
 
+    // The panels, the banner and the stickies all live INSIDE #canvas, so the
+    // gesture handlers below would otherwise treat a click on them as a board
+    // gesture. Pan mode calls setPointerCapture, and capture retargets the
+    // following click to the capture target - which is why library "View"
+    // buttons, question replies and sticky textareas stopped responding.
+    function onOverlaidUI(ev) {
+      const t = ev.target;
+      return !!(t && t.closest && t.closest('#qpanel, #librarypanel, #viewbanner, .sticky-fo, .sticky-note'));
+    }
+
     let drag = null;
     canvas.addEventListener('pointerdown', (ev) => {
+      if (onOverlaidUI(ev)) return;
       if (mode === 'pen') {
         canvas.setPointerCapture(ev.pointerId);
         const b = toBoardCoords(ev.clientX, ev.clientY);
@@ -1306,7 +1319,7 @@
     };
     canvas.addEventListener('pointerup', endDrag);
     canvas.addEventListener('pointercancel', endDrag);
-    canvas.addEventListener('dblclick', () => { if (mode === 'pan') fit(); });
+    canvas.addEventListener('dblclick', (ev) => { if (mode === 'pan' && !onOverlaidUI(ev)) fit(); });
     window.addEventListener('resize', () => { if (autoFit) fit(); });
 
     /* --------------------------------------------------------------- render */

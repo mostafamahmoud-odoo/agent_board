@@ -3,33 +3,37 @@
   "displayName": "Claude Notes Panel",
   "description": "Renders Claude's planning notes as a hand-drawn whiteboard (frames, sticky notes, margin annotations) or a mermaid diagram in a side panel, with pan/zoom and fit-to-panel.",
   "version": "0.2.0",
+  "license": "MIT",
+  "publisher": "local",
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": [
+    "Visualization",
+    "Notebooks",
     "Other"
   ],
-  "activationEvents": [
-    "onStartupFinished"
-  ],
   "main": "./src/extension.js",
+  "activationEvents": [
+    "workspaceContains:.claude/notes.json"
+  ],
   "contributes": {
     "commands": [
       {
         "command": "claudeNotes.open",
-        "title": "Claude: Open Notes Panel"
+        "title": "Claude Notes: Open Panel"
       },
       {
         "command": "claudeNotes.clear",
-        "title": "Claude: Clear Notes Panel"
+        "title": "Claude Notes: Clear Board"
       },
       {
         "command": "claudeNotes.clearFeedback",
-        "title": "Claude: Clear Notes Panel Marks (answers, pen, stickies)"
+        "title": "Claude Notes: Clear Marks (answers, pen, stickies)"
       },
       {
         "command": "claudeNotes.saveBoard",
-        "title": "Claude: Save Current Note to Library"
+        "title": "Claude Notes: Save Board to Library"
       }
     ],
     "keybindings": [
@@ -41,11 +45,33 @@
     ]
   },
   "scripts": {
-    "package": "vsce package"
+    "check-types": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/webview/tsconfig.json",
+    "lint": "eslint src",
+    "compile": "npm run check-types && npm run lint && node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "package": "npm run check-types && npm run lint && node esbuild.mjs --production",
+    "test:unit": "vitest run",
+    "test": "vscode-test",
+    "vscode:prepublish": "npm run package"
+  },
+  "dependencies": {
+    "roughjs": "^4.6.6"
   },
   "devDependencies": {
-    "@vscode/vsce": "^2.24.0"
+    "@types/node": "^22.10.0",
+    "@types/vscode": "^1.85.0",
+    "@types/vscode-webview": "^1.57.5",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.0.0",
+    "ajv": "^8.17.1",
+    "esbuild": "^0.28.2",
+    "eslint": "^9.17.0",
+    "ovsx": "^1.2.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
   },
-  "publisher": "local",
-  "license": "MIT"
+  "//main": "TEMPORARY: stays on the un-ported JS until Phase 2 (T029) lands dist/extension.js. Switching it early would leave the extension unloadable between phases."
 }

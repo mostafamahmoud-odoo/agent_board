@@ -1,0 +1,28 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "watch",
+      "dependsOn": ["npm: watch:esbuild", "npm: watch:tsc"],
+      "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      "type": "npm",
+      "script": "watch",
+      "label": "npm: watch:esbuild",
+      "group": "build",
+      "problemMatcher": "$esbuild-watch",
+      "isBackground": true,
+      "presentation": { "group": "watch", "reveal": "never" }
+    },
+    {
+      "type": "shell",
+      "command": "npx tsc --noEmit --watch --project tsconfig.json",
+      "label": "npm: watch:tsc",
+      "group": "build",
+      "problemMatcher": "$tsc-watch",
+      "isBackground": true,
+      "presentation": { "group": "watch", "reveal": "never" }
+    }
+  ]
+}

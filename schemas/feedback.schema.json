@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/claude-notes-panel/schemas/feedback.schema.json",
+  "title": "Claude Notes feedback log",
+  "description": "The one-way channel from the panel back to the agent, at .claude/notes_feedback.json. The agent only sees it when next invoked, so every entry must be self-contained and durable. NOTE FOR IMPLEMENTERS: a parse failure of this file MUST NOT cause it to be overwritten (FR-035) - the current code returns an empty object on a catch and the next append writes it back, destroying every captured answer.",
+  "type": "object",
+  "required": ["answers", "drawings", "stickies"],
+  "additionalProperties": true,
+
+  "properties": {
+    "schemaVersion": { "type": "integer", "minimum": 1, "default": 1 },
+    "answers": { "type": "array", "items": { "$ref": "#/$defs/answer" } },
+    "drawings": { "type": "array", "items": { "$ref": "#/$defs/drawing" } },
+    "stickies": { "type": "array", "items": { "$ref": "#/$defs/sticky" } }
+  },
+
+  "$defs": {
+    "entryBase": {
+      "type": "object",
+      "required": ["id", "at"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[adsx]-[0-9a-z]+-[0-9a-z]+$",
+          "description": "<kindInitial>-<base36 timestamp>-<base36 random>."
+        },
+        "at": { "type": "string", "format": "date-time" },
+        "consumed": {
+          "type": "boolean",
+          "default": false,
+          "description": "NEW (FR-014). Set once the entry has been handed to the agent, so the same answer is never applied twice and pruning knows what is safe to drop first."
+        },
+        "boardTitle": {
+          "type": "string",
+          "description": "NEW. The title of the board that was live when the mark was made - without it, a mark cannot be related back to a board once the live board has moved on."
+        }
+      }
+    },
+
+    "answer": {
+      "allOf": [{ "$ref": "#/$defs/entryBase" }],
+      "type": "object",
+      "required": ["id", "at", "questionId", "text"],
+      "additionalProperties": true,
+      "properties": {
+        "questionId": {
+          "type": "string",
+          "description": "Refers to a question's id on the board. This is the only cross-document reference in the whole model."
+        },
+        "question": {
+          "type": "string",
+          "description": "The question text, copied at answer time so the entry stays self-contained after the board is replaced."
+        },
+        "text": { "type": "string", "description": "What the user typed." }
+      }
+    },
+
+    "drawing": {
+      "allOf": [{ "$ref": "#/$defs/entryBase" }],
+      "type": "object",
+      "required": ["id", "at", "points"],
+      "additionalProperties": true,
+      "properties": {
+        "color": { "type": "string" },
+        "points": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2000,
+          "description": "Board-pixel coordinates. MUST be decimated before storage (FR-040) - the current code pushes one point per pointermove, so a single long stroke can be thousands of points.",
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": { "type": "number" }
+          }
+        }
+      }
+    },
+
+    "sticky": {
+      "allOf": [{ "$ref": "#/$defs/entryBase" }],
+      "type": "object",
+      "required": ["id", "at", "x", "y", "text"],
+      "additionalProperties": true,
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "text": { "type": "string" }
+      }
+    }
+  },
+
+  "$comment": "COORDINATE SEMANTICS: x/y in 'sticky' and the points in 'drawing' are board-pixel coordinates from the layout that was live when the mark was made. A re-layout shifts everything, so they mean 'roughly here', never exact geometry. An agent reading this file should treat a drawing as 'the user circled something around here' and ask if it cannot tell what a stroke points at. BOUNDS: the log is capped by claudeNotes.feedback.maxEntries; consumed entries are pruned first, oldest first (SC-008)."
+}

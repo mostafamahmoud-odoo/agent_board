@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          # @vscode/vsce 4.x requires Node >= 22. Note this is the BUILD
+          # runtime; the emitted bundle targets node18, which is what
+          # VS Code 1.85 (engines.vscode) actually ships.
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # esbuild strips types without checking them - only syntax errors
+      # surface from the build. This is the only thing that type-checks.
+      - run: npm run check-types
+
+      - run: npm run lint
+
+      - run: npm run test:unit
+
+      - run: npm run compile
+
+      # Integration tests drive a real VS Code; headless Linux needs xvfb.
+      - run: xvfb-run -a npm test
+
+      # Fail loudly here rather than at publish time if dist/ was excluded
+      # by .vscodeignore ("Extension entrypoint(s) missing").
+      - run: npx --yes @vscode/vsce@4 ls --tree --no-dependencies

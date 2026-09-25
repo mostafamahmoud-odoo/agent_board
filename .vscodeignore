@@ -1,3 +1,32 @@
 .vscode/**
+.vscode-test/**
+.vscode-test.mjs
+.github/**
+out/**
 node_modules/**
-*.vsix
+src/**
+test/**
+specs/**
+coverage/**
+.gitignore
+esbuild.mjs
+eslint.config.mjs
+vitest.config.ts
+**/tsconfig.json
+**/*.ts
+**/*.map
+**/*.vsix
+**/*.zip
+scripts/**
+.claude/**
+
+# main points into dist/ — excluding it produces "Extension entrypoint(s)
+# missing", the most common bundling-related packaging failure. Re-include
+# explicitly. Do NOT also add a "files" array to package.json: vsce exits 1
+# on "VSCE does not support combining both strategies".
+!dist/**
+!media/**
+!schemas/**
+!skill/**
+!LICENSE
+!CHANGELOG.md

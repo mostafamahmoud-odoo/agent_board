@@ -1,0 +1,22 @@
+{
+  "//": "Webview half. NOTE: `types` must NOT include \"node\" — this code runs in a browser context. @types/vscode is a GLOBAL AMBIENT package and is deliberately absent here too; the webview gets acquireVsCodeApi() from @types/vscode-webview instead.",
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["vscode-webview"],
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "sourceMap": true,
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "include": ["./**/*.ts", "../shared/**/*.ts"],
+  "exclude": ["../../node_modules", "../../dist"]
+}

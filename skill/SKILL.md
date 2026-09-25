@@ -33,6 +33,12 @@ annotations the way a person would while talking.
 - **sketchy** (default, preferred): the whiteboard. Auto-layout, frames,
   shapes, sticky notes, margin annotations, legend. Use for almost everything -
   it reads as thinking-in-progress, which is what a discussion answer is.
+- **clean**: the same board, same layout, precise strokes instead of hand-drawn
+  wobble. You rarely need to ask for this: the user can switch any sketchy
+  board to clean from the panel toolbar, which is the point - the board reads
+  as thinking-in-progress while you talk, and as a diagram when they share it.
+  Set it explicitly only if the board is *only* ever going into a doc or a
+  ticket.
 - **mermaid**: only when you specifically want a formal graph type mermaid does
   well and sketchy does not - sequence diagrams, state machines, ER, gantt,
   large auto-routed dependency graphs.
@@ -44,7 +50,13 @@ annotations the way a person would while talking.
 **Do not hand-place coordinates.** Put nodes in frames and let the layout
 engine size and place everything; boxes auto-size to their text, so labels can
 be as long as they need and `\n` works. `x`/`y`/`w`/`h` are still honoured for
-old specs but you should not write them.
+old specs but you should not write them. If you ever read one: `w` is
+authoritative, while `h` is only a *minimum* - the box still grows to fit its
+text. The same asymmetry applies to a screen's `width`.
+
+Two aliases are also accepted for boards written before the schema settled -
+`groups` for `frames`, `notes` for `annotations`, and `source`/`target` for an
+edge's `from`/`to`. They still render, but write the modern spelling.
 
 ```json
 {
@@ -77,7 +89,9 @@ old specs but you should not write them.
 ### Fields
 
 **top level**
-- `style`: `"sketchy"`
+- `schemaVersion`: optional integer; omit it and the panel assumes 1. Only set
+  it if you are deliberately writing a newer schema.
+- `style`: `"sketchy"` (or `"clean"`; `"mermaid"` uses the separate spec below)
 - `title`: shown in the panel toolbar
 - `layout`: `"columns"` (frames flow left-to-right, wrapping) or `"rows"`
 - `maxWidth`: board width before frames wrap into a new band (default 1500)
@@ -101,7 +115,10 @@ old specs but you should not write them.
 - `emphasis`: true - thicker stroke + bold text, for the one thing that matters
 - `badge`: tiny corner chip, e.g. `"step 1"`, `"bug"`, `"line 3886"`
 - `hatch`: true - hand-shaded fill, good for "not built yet"
-- `color`, `fill`, `textColor`: override the palette when you need to
+- `color`, `fill`, `textColor`: override the palette when you need to.
+  **Prefer `kind`.** A literal colour bypasses the theme binding, so it will
+  not adapt to a light or high-contrast theme and may fail the contrast the
+  panel otherwise guarantees.
 
 **edges**
 - `from`, `to` (node ids), `label`
@@ -111,7 +128,9 @@ old specs but you should not write them.
   chains both look deliberate.
 
 **annotations** (margin scribbles - this is what makes it feel like a whiteboard)
-- `text` (supports `\n`), `size`, `kind`/`color`, `rotate`, `underline`
+- `text` (supports `\n`), `size`, `kind`/`color`, `rotate`, `underline`,
+  `opacity` (0-1; the default is 0.95, so lower it only to push a note further
+  into the background)
 - `at`: node id to anchor beside, with `dx`/`dy` nudges; or absolute `x`/`y`
 - `arrowTo`: node id - draws a wobbly dashed pointer to it
 - `anchor`: `start` (default) · `middle` · `end`

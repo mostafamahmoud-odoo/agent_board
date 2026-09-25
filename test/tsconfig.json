@@ -14,5 +14,6 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["./**/*.ts", "../src/**/*.ts"]
+  "include": ["./unit/**/*.ts", "./stubs/**/*.ts", "../src/**/*.ts"],
+  "exclude": ["./integration/**"]
 }

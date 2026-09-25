@@ -1,0 +1,18 @@
+{
+  "//": "Integration tests are COMPILED (not bundled) to out/, because @vscode/test-cli loads them as plain CommonJS inside the extension host.",
+  "compilerOptions": {
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "types": ["node", "mocha"],
+    "strict": true,
+    "sourceMap": true,
+    "rootDir": "../..",
+    "outDir": "../../out",
+    "skipLibCheck": true,
+    "noEmit": false
+  },
+  "include": ["./**/*.ts", "../../src/**/*.ts"],
+  "exclude": ["../../src/webview/**"]
+}

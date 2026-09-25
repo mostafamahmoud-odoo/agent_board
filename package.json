@@ -21,19 +21,59 @@
     "commands": [
       {
         "command": "claudeNotes.open",
-        "title": "Claude Notes: Open Panel"
+        "title": "Open Panel",
+        "category": "Claude Notes"
       },
       {
         "command": "claudeNotes.clear",
-        "title": "Claude Notes: Clear Board"
+        "title": "Clear Board",
+        "category": "Claude Notes",
+        "enablement": "claudeNotes.panelVisible"
       },
       {
         "command": "claudeNotes.clearFeedback",
-        "title": "Claude Notes: Clear Marks (answers, pen, stickies)"
+        "title": "Clear Marks (answers, pen, stickies)",
+        "category": "Claude Notes"
       },
       {
         "command": "claudeNotes.saveBoard",
-        "title": "Claude Notes: Save Board to Library"
+        "title": "Save Board to Library",
+        "category": "Claude Notes",
+        "enablement": "claudeNotes.panelVisible"
+      },
+      {
+        "command": "claudeNotes.openLibrary",
+        "title": "Browse Board Library",
+        "category": "Claude Notes"
+      },
+      {
+        "command": "claudeNotes.setStyle",
+        "title": "Change Render Style...",
+        "category": "Claude Notes",
+        "enablement": "claudeNotes.panelVisible"
+      },
+      {
+        "command": "claudeNotes.fit",
+        "title": "Fit Board to Panel",
+        "category": "Claude Notes",
+        "enablement": "claudeNotes.panelVisible"
+      },
+      {
+        "command": "claudeNotes.resetZoom",
+        "title": "Reset Zoom to 100%",
+        "category": "Claude Notes",
+        "enablement": "claudeNotes.panelVisible"
+      },
+      {
+        "command": "claudeNotes.copyDescription",
+        "title": "Copy Board as Text",
+        "category": "Claude Notes",
+        "enablement": "claudeNotes.panelVisible"
+      },
+      {
+        "command": "claudeNotes.handOffFeedback",
+        "title": "Copy Pending Replies for Claude",
+        "category": "Claude Notes"
       }
     ],
     "keybindings": [
@@ -42,7 +82,90 @@
         "key": "ctrl+alt+n",
         "mac": "cmd+alt+n"
       }
-    ]
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "claudeNotes.clear",
+          "when": "claudeNotes.panelVisible"
+        },
+        {
+          "command": "claudeNotes.saveBoard",
+          "when": "claudeNotes.panelVisible"
+        },
+        {
+          "command": "claudeNotes.setStyle",
+          "when": "claudeNotes.panelVisible"
+        },
+        {
+          "command": "claudeNotes.fit",
+          "when": "claudeNotes.panelVisible"
+        },
+        {
+          "command": "claudeNotes.resetZoom",
+          "when": "claudeNotes.panelVisible"
+        },
+        {
+          "command": "claudeNotes.copyDescription",
+          "when": "claudeNotes.panelVisible"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Claude Notes",
+      "properties": {
+        "claudeNotes.defaultStyle": {
+          "type": "string",
+          "enum": [
+            "sketchy",
+            "clean",
+            "mermaid"
+          ],
+          "default": "sketchy",
+          "enumDescriptions": [
+            "Hand-drawn whiteboard",
+            "Precise SVG, for sharing",
+            "Formal graph types"
+          ],
+          "description": "Render style used when a board does not declare one."
+        },
+        "claudeNotes.openOnStartup": {
+          "type": "boolean",
+          "default": true,
+          "description": "Open the panel automatically when the workspace already has a board. A webview panel belongs to one window, so a second window shows nothing without this."
+        },
+        "claudeNotes.notifyOnFeedback": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a notification when an answer, note or drawing is captured, with a one-click handoff to Claude."
+        },
+        "claudeNotes.feedback.maxEntries": {
+          "type": "number",
+          "default": 500,
+          "minimum": 10,
+          "description": "Maximum entries kept in .claude/notes_feedback.json. Consumed entries are pruned first, oldest first; a pending answer is never dropped to make room."
+        },
+        "claudeNotes.library.maxEntries": {
+          "type": "number",
+          "default": 200,
+          "minimum": 10,
+          "description": "Maximum boards kept in .claude/notes/."
+        },
+        "claudeNotes.reducedMotion": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "always"
+          ],
+          "default": "auto",
+          "enumDescriptions": [
+            "Follow VS Code's workbench.reduceMotion setting",
+            "Never animate in this panel"
+          ],
+          "description": "VS Code already owns this preference; 'always' forces motion off for this panel alone."
+        }
+      }
+    }
   },
   "scripts": {
     "check-types": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/webview/tsconfig.json && tsc --noEmit -p test/tsconfig.json",
@@ -52,12 +175,15 @@
     "package": "npm run check-types && npm run lint && node esbuild.mjs --production",
     "test:unit": "vitest run",
     "test": "vscode-test",
-    "vscode:prepublish": "npm run package"
+    "vscode:prepublish": "npm run package",
+    "compile-tests": "tsc -p test/integration/tsconfig.json",
+    "pretest": "npm run compile && npm run compile-tests"
   },
   "dependencies": {
     "roughjs": "^4.6.6"
   },
   "devDependencies": {
+    "@types/mocha": "^10.0.10",
     "@types/node": "^22.10.0",
     "@types/vscode": "^1.85.0",
     "@types/vscode-webview": "^1.57.5",
@@ -72,5 +198,41 @@
     "ovsx": "^1.2.0",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
-  }
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "In a restricted workspace the panel renders boards read-only: it will not write to .claude/, save to the library, or render mermaid.",
+      "restrictedConfigurations": [
+        "claudeNotes.openOnStartup"
+      ]
+    },
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "Requires a file-system watcher on a local workspace folder."
+    }
+  },
+  "keywords": [
+    "claude",
+    "diagram",
+    "whiteboard",
+    "mermaid",
+    "sketch",
+    "ai",
+    "notes",
+    "visualization"
+  ],
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
+  "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/REPLACE-ME/claude-notes-panel.git"
+  },
+  "bugs": {
+    "url": "https://github.com/REPLACE-ME/claude-notes-panel/issues"
+  },
+  "homepage": "https://github.com/REPLACE-ME/claude-notes-panel#readme"
 }

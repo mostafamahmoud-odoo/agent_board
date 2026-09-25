@@ -1,0 +1,94 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      pre_release:
+        description: 'Publish as a pre-release (Marketplace only)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      vsix: ${{ steps.pack.outputs.vsix }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          # @vscode/vsce 4.x requires Node >= 22. This is the BUILD runtime;
+          # the emitted bundle targets node18, which is what VS Code 1.85
+          # (engines.vscode) actually ships.
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run check-types     # esbuild strips types without checking them
+      - run: npm run lint
+      - run: npm run test:unit
+      - run: xvfb-run -a npm test    # integration tests drive a real VS Code
+
+      - id: pack
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./package.json').version")
+          PRE=""
+          if [ "${{ inputs.pre_release }}" = "true" ]; then PRE="--pre-release"; fi
+          npx --yes @vscode/vsce@4 package $PRE --no-dependencies -o "claude-notes-panel-${VERSION}.vsix"
+          echo "vsix=claude-notes-panel-${VERSION}.vsix" >> "$GITHUB_OUTPUT"
+
+      # `vsce ls` does NOT detect a missing entrypoint (verified: it exits 0
+      # and just lists files). `vsce package` above does, but assert it
+      # explicitly so a mis-ignored dist/ names itself instead of surfacing
+      # later as a broken install.
+      - name: Verify the bundle is actually in the VSIX
+        run: |
+          set -euo pipefail
+          unzip -l "${{ steps.pack.outputs.vsix }}" | grep -q 'extension/dist/extension.js'
+          unzip -l "${{ steps.pack.outputs.vsix }}" | grep -q 'extension/dist/webview.js'
+          echo "entrypoints present"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: ${{ steps.pack.outputs.vsix }}
+          if-no-files-found: error
+
+  publish-marketplace:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # MANDATORY, and it must be on the JOB. vsce deliberately does NOT fall
+      # back to a PAT when token exchange fails.
+      id-token: write
+    steps:
+      - uses: actions/setup-node@v5
+        with: { node-version: 22 }
+      - uses: actions/download-artifact@v4
+        with: { name: vsix }
+      # Azure DevOps global PATs retire 2026-12-01; this is the OIDC path.
+      - run: npx --yes @vscode/vsce@4 publish --oidc --packagePath "${{ needs.build.outputs.vsix }}" --skip-duplicate
+
+  publish-openvsx:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/setup-node@v5
+        with: { node-version: 22 }
+      - uses: actions/download-artifact@v4
+        with: { name: vsix }
+      # NOTE: do NOT define an OVSX_PAT secret. ovsx documents that a PAT
+      # always takes precedence, so a leftover one silently defeats OIDC.
+      - run: npx --yes ovsx@1 publish "${{ needs.build.outputs.vsix }}" --trusted-publishing
+        env:
+          OVSX_TIMEOUT: '120000'

@@ -1,6 +1,14 @@
 import { defineConfig } from 'vitest/config';
+import path from 'node:path';
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      // `vscode` is provided by the editor at runtime and is external in the
+      // bundle, so a plain Node runner cannot resolve it.
+      vscode: path.resolve(__dirname, 'test/stubs/vscode.ts')
+    }
+  },
   test: {
     // DOM-free on purpose. jsdom has no getBBox at all (the renderer throws)
     // and happy-dom returns zeros, which is worse: layout runs to completion

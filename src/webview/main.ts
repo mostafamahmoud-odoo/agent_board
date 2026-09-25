@@ -14,6 +14,8 @@ import { describe } from './a11y/describe.js';
 import { announce, mountAnnouncer } from './a11y/announce.js';
 import { BoardFocus } from './a11y/focus.js';
 import { Viewport } from './interact/viewport.js';
+import { Marks } from './interact/marks.js';
+import { SVG_NS } from './render/svg.js';
 
 const vscode = acquireVsCodeApi();
 const measurer = createCanvasMeasurer();
@@ -66,10 +68,16 @@ qBtn.setAttribute('aria-controls', 'qpanel');
 const libBtn = button('Library', 'Browse saved boards');
 libBtn.setAttribute('aria-expanded', 'false');
 libBtn.setAttribute('aria-controls', 'librarypanel');
+const penBtn = button('Pen', 'Draw on the board (toggle)');
+penBtn.setAttribute('aria-pressed', 'false');
+const noteBtn = button('Note', 'Drop a sticky note (toggle)');
+noteBtn.setAttribute('aria-pressed', 'false');
+const clearBtn = button('Clear marks', 'Remove your drawings, notes and answers');
+const modeHint = span('modehint', '');
 const saveBtn = button('Save', 'Save this board to the project library');
 const copyBtn = button('Copy as text', 'Copy a text description of this board');
 const spacer = div('spacer');
-bar.append(titleEl, folderEl, styleSel, fitBtn, oneBtn, spacer, copyBtn, qBtn, libBtn, saveBtn);
+bar.append(titleEl, folderEl, styleSel, fitBtn, oneBtn, penBtn, noteBtn, modeHint, spacer, copyBtn, clearBtn, qBtn, libBtn, saveBtn);
 
 const canvas = div('canvas');
 canvas.id = 'canvas';
@@ -78,6 +86,11 @@ canvas.setAttribute('aria-label', 'Board');
 const inner = div('viewport');
 inner.id = 'viewport';
 canvas.appendChild(inner);
+
+const overlay = document.createElementNS(SVG_NS, 'svg');
+overlay.id = 'overlay';
+overlay.setAttribute('aria-hidden', 'true');
+canvas.appendChild(overlay);
 
 const description = document.createElement('div');
 description.id = 'description';
@@ -103,9 +116,16 @@ libPanel.setAttribute('aria-label', 'Board library');
 app.append(bar, canvas, description, banner, qPanel, libPanel);
 mountAnnouncer(app);
 
+let marks: Marks;
+
 const viewport = new Viewport(canvas, inner, () => {
-  vscode.setState({ ...(vscode.getState() as Persisted), viewport: viewport.state, style });
+  vscode.setState({ ...(vscode.getState() as Persisted), viewport: viewport.state, style, boardTitle: spec?.title });
+  // The overlay shares the board's transform so marks stay put under pan/zoom.
+  overlay.style.transform = inner.style.transform;
+  overlay.style.transformOrigin = '0 0';
 });
+
+marks = new Marks(overlay, viewport, post, announce, palette);
 
 /* -------------------------------------------------------------- helpers */
 
@@ -163,6 +183,7 @@ async function draw(): Promise<void> {
   if (!spec) return;
   const signals = readSignals();
   palette = buildPalette(signals.kind);
+  marks.setPalette(palette);
   viewport.setReduceMotion(signals.reduceMotion);
 
   const effective: RenderStyle = spec.style === 'mermaid' ? 'mermaid' : style;
@@ -220,6 +241,7 @@ async function draw(): Promise<void> {
     viewport.restore(saved.viewport);
   }
   renderQuestions();
+  marks.restore(feedback, spec.title);
 }
 
 /* ------------------------------------------------------------ questions */
@@ -307,6 +329,12 @@ function renderLibrary(): void {
   }
 }
 
+function applyMode(m: 'pan' | 'pen' | 'note'): void {
+  penBtn.setAttribute('aria-pressed', String(m === 'pen'));
+  noteBtn.setAttribute('aria-pressed', String(m === 'note'));
+  modeHint.textContent = m === 'pen' ? 'drawing' : m === 'note' ? 'click to place a note' : '';
+}
+
 function toggle(panel: HTMLElement, btn: HTMLButtonElement): void {
   const open = panel.hidden;
   panel.hidden = !open;
@@ -331,6 +359,18 @@ fitBtn.onclick = () => viewport.fit();
 oneBtn.onclick = () => viewport.reset();
 saveBtn.onclick = () => post({ type: 'saveBoard' });
 copyBtn.onclick = () => post({ type: 'description', text: description.textContent || '' });
+penBtn.onclick = () => applyMode(marks.setMode('pen'));
+noteBtn.onclick = () => {
+  const m = marks.setMode('note');
+  applyMode(m);
+  // Keyboard path: with no pointer, drop the note in the middle of the view.
+  if (m === 'note' && !window.matchMedia('(pointer: fine)').matches) marks.placeCentreSticky();
+};
+clearBtn.onclick = () => {
+  post({ type: 'clearFeedback' });
+  marks.clear();
+  announce('Marks cleared.');
+};
 qBtn.onclick = () => toggle(qPanel, qBtn);
 libBtn.onclick = () => {
   post({ type: 'listLibrary' });
@@ -342,6 +382,7 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     if (!qPanel.hidden) toggle(qPanel, qBtn);
     else if (!libPanel.hidden) toggle(libPanel, libBtn);
+    else if (marks.getMode() !== 'pan') applyMode(marks.setMode(marks.getMode()));
     return;
   }
   if (inField) return;
@@ -355,6 +396,14 @@ window.addEventListener('keydown', (e) => {
     case '-': case '_': viewport.zoom(1 / 1.15); e.preventDefault(); break;
     case '0': viewport.reset(); e.preventDefault(); break;
     case 'f': case 'F': viewport.fit(); e.preventDefault(); break;
+    case 'p': case 'P': applyMode(marks.setMode('pen')); e.preventDefault(); break;
+    case 'n': case 'N': {
+      const m = marks.setMode('note');
+      applyMode(m);
+      if (m === 'note') marks.placeCentreSticky();
+      e.preventDefault();
+      break;
+    }
     default: break;
   }
 });
@@ -413,6 +462,7 @@ window.addEventListener('message', (ev: MessageEvent) => {
       return;
     case 'feedbackState':
       feedback = m.data;
+      marks.restore(feedback, spec?.title);
       renderQuestions();
       return;
     case 'library':

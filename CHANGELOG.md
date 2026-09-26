@@ -6,6 +6,26 @@ The Marketplace supports only `major.minor.patch` — semver pre-release tags ar
 not valid. Following the documented convention, **even** minor versions are
 releases and **odd** minor versions are pre-releases.
 
+## [0.7.0] — unreleased
+
+### Added
+
+- **A Hand tool**, plus hold-Space and middle-drag, for moving around the
+  board. On a busy board almost every drag was landing on something and
+  moving it, because there was hardly any empty space left to pan from.
+- **Mermaid now works on any board.** Choosing it on a board of nodes and
+  frames used to fail outright — mermaid renders a `code` field that those
+  boards do not have. The diagram is derived from the board instead: groups
+  become subgraphs, shapes and edge labels carry over, and the panel says
+  what it could not represent. The option is hidden when it cannot work.
+
+### Changed
+
+- **Sticky notes look like notes.** They were being tinted to match the theme,
+  which turned them into dark olive blocks with unreadable text. They are warm
+  paper with dark ink in every theme now, with a folded corner, a quieter drag
+  handle, and a delete button that appears on hover.
+
 ## [0.6.2] — unreleased
 
 ### Fixed

@@ -52,7 +52,7 @@ export interface Palette {
   chip: string;
   focus: string;
   muted: string;
-  sticky: { fill: string; text: string };
+  sticky: { fill: string; text: string; edge: string };
   pen: string;
   kinds: Record<Kind, KindColors>;
 }
@@ -209,7 +209,15 @@ export function buildPalette(kind: ThemeKind, reader: (name: string, fallback: s
     chip: widget,
     focus,
     muted: mix(bg, fg, 0.6),
-    sticky: kinds.note.f === 'transparent' ? { fill: 'transparent', text: fg } : { fill: kinds.note.f, text: kinds.note.t },
+    /*
+     * A sticky note is PAPER. It stays a warm light yellow in every theme,
+     * with dark ink on it, because that is what makes it read as a note stuck
+     * onto the board rather than another box drawn on it. Tinting it dark to
+     * "match the theme" produced an unreadable olive block.
+     */
+    sticky: hc
+      ? { fill: bg, text: fg, edge: fg }
+      : { fill: '#fde9a9', text: '#2b2410', edge: '#c9a227' },
     pen: hue.orange,
     kinds
   };

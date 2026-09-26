@@ -1,0 +1,30 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; font-src 'self' data:; script-src 'nonce-n'">
+<link rel="stylesheet" href="webview.css">
+<style nonce="n">html,body{margin:0;height:100%;background:#1e1e1e}#app{position:relative;height:100%}</style>
+</head><body data-vscode-theme-kind="vscode-dark" class="vscode-dark" data-mermaid-uri="mermaid.min.js">
+<div id="app"></div><pre id="out" style="position:fixed;bottom:0;left:0;color:#8f8;font:11px monospace;z-index:99"></pre>
+<script nonce="n">window.__posted=[];let st;
+window.acquireVsCodeApi=()=>({postMessage:m=>window.__posted.push(m),getState:()=>st,setState:s=>(st=s)});
+window.__v=[];document.addEventListener('securitypolicyviolation',e=>window.__v.push(e.violatedDirective));</script>
+<script type="module" nonce="n" src="webview.js"></script>
+<script nonce="n">
+window.addEventListener('load',()=>setTimeout(()=>{
+  // a STRUCTURAL board - no `code`. This is exactly what errored before.
+  window.dispatchEvent(new MessageEvent('message',{data:{type:'render',generation:1,spec:{
+    title:'derived', frames:[{id:'f',title:'Group',nodes:['a','b']}],
+    nodes:[{id:'a',label:'alpha'},{id:'b',label:'beta',shape:'diamond'}],
+    edges:[{from:'a',to:'b',label:'link'}]}}}));
+  setTimeout(()=>{
+    window.dispatchEvent(new MessageEvent('message',{data:{type:'setStyle',style:'mermaid'}}));
+    setTimeout(()=>{
+      const d=document.querySelector('#viewport svg[aria-label^="Diagram"]');
+      const b=document.querySelector('#banner');
+      document.getElementById('out').textContent =
+        'derived diagram: '+(d?'YES':'NO')+
+        '\nbanner: '+(b&&!b.hidden?b.textContent.slice(0,90):'(none)')+
+        '\nviolations: '+(window.__v.join(',')||'none');
+    },2600);
+  },400);
+},80));
+</script></body></html>

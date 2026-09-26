@@ -16,6 +16,8 @@ export class Viewport {
   private tx = 8;
   private ty = 8;
   private dragging = false;
+  /** Space acts as a temporary Hand tool, as on any canvas. */
+  private spaceHeld = false;
   private sx = 0;
   private sy = 0;
 
@@ -117,6 +119,12 @@ export class Viewport {
     this.apply();
   }
 
+  /** Tells the viewport whether Space is currently down. */
+  setSpaceHeld(v: boolean): void {
+    this.spaceHeld = v;
+    this.canvas.classList.toggle('space-pan', v);
+  }
+
   private attach(): void {
     this.canvas.addEventListener(
       'wheel',
@@ -131,9 +139,15 @@ export class Viewport {
 
     this.canvas.addEventListener('pointerdown', (ev) => {
       if (Viewport.onOverlaidUI(ev)) return;
-      // An armed tool owns the drag; panning would fight the pen.
-      if ((this.canvas as HTMLElement).dataset.tool && (this.canvas as HTMLElement).dataset.tool !== 'pan') return;
-      if ((ev.target as Element)?.closest?.('.board-el')) return;
+      const tool = (this.canvas as HTMLElement).dataset.tool || 'select';
+      // The pen and note tools own the drag entirely.
+      if (tool === 'pen' || tool === 'note') return;
+      // Middle-drag and Space-drag always pan, whatever tool is chosen — the
+      // escape hatch for a board so full there is no empty space to grab.
+      const forced = ev.button === 1 || this.spaceHeld;
+      if (!forced) {
+        if (tool !== 'hand' && (ev.target as Element)?.closest?.('.board-el')) return;
+      }
       this.dragging = true;
       this.sx = ev.clientX - this.tx;
       this.sy = ev.clientY - this.ty;

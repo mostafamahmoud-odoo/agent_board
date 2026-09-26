@@ -149,6 +149,7 @@ await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Es
 await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
 await sleep(200);
 check('Escape puts the pen away', await armed(), 'false');
+check('Escape returns to Select', await evaluate(`document.getElementById('canvas').dataset.tool`), 'select');
 
 // 8. with the pen away, a drag pans instead of drawing
 await mouse('mousePressed', Math.round(vp.w / 2), Math.round(vp.h / 2));

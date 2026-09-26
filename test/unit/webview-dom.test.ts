@@ -183,7 +183,7 @@ describe('pen and note toggle', () => {
     pen.click();
     pen.click();
     expect(pen.getAttribute('aria-pressed')).toBe('false');
-    expect((h.$('#canvas') as HTMLElement).dataset.tool).toBe('pan');
+    expect((h.$('#canvas') as HTMLElement).dataset.tool).toBe('select');
   });
 
   it('Pen and Note are mutually exclusive', () => {
@@ -195,7 +195,7 @@ describe('pen and note toggle', () => {
 
   it('selecting a tool deselects the others', () => {
     h.btn('Pen').click();
-    expect(h.btn('Select and pan').getAttribute('aria-pressed')).toBe('false');
+    expect(h.btn('Select').getAttribute('aria-pressed')).toBe('false');
     expect(h.btn('Pen').getAttribute('aria-pressed')).toBe('true');
   });
 
@@ -480,6 +480,26 @@ describe('the board is objects, not one flat picture', () => {
     pointerOn(el, 'pointerdown', 100, 100);
     pointerOn(el, 'pointerup', 100, 100);
     expect(h.posted.some((mm) => mm.type === 'moveElement'), 'a plain click moved the node').toBe(false);
+  });
+
+  it('the Hand tool exists, so a full board can still be panned', () => {
+    // Every drag on a busy board was grabbing an element, because there is
+    // almost no empty canvas left to start a pan from.
+    const hand = h.btn('Pan the board');
+    expect(hand).not.toBeNull();
+    hand.click();
+    expect((h.$('#canvas') as HTMLElement).dataset.tool).toBe('hand');
+    expect(hand.getAttribute('aria-pressed')).toBe('true');
+    expect(h.btn('Select').getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('the Hand tool does not move elements', () => {
+    h.btn('Pan the board').click();
+    const el = h.doc.querySelector('#viewport svg [data-element-id]') as SVGGElement;
+    pointerOn(el, 'pointerdown', 100, 100);
+    pointerOn(el, 'pointermove', 160, 140);
+    pointerOn(el, 'pointerup', 160, 140);
+    expect(h.posted.some((mm) => mm.type === 'moveElement'), 'the hand tool moved an element').toBe(false);
   });
 
   it('a tool being armed disables dragging', () => {

@@ -19,10 +19,10 @@ import type { Viewport } from './viewport.js';
  *    second copy of the same note.
  */
 
-export type Mode = 'pan' | 'pen' | 'note';
+export type Mode = 'select' | 'hand' | 'pen' | 'note';
 
-const NOTE_W = 190;
-const NOTE_H = 108;
+const NOTE_W = 168;
+const NOTE_H = 96;
 
 /** Ramer-Douglas-Peucker: keeps the shape, drops the redundant samples. */
 export function decimate(points: [number, number][], epsilon = 1.6): [number, number][] {
@@ -53,7 +53,7 @@ function perpendicularDistance(p: [number, number], a: [number, number], b: [num
 }
 
 export class Marks {
-  private mode: Mode = 'pan';
+  private mode: Mode = 'select';
   private stroke: [number, number][] = [];
   private active: SVGPathElement | null = null;
   /** Set while a note is open, so a state refresh cannot wipe it mid-sentence. */
@@ -95,24 +95,27 @@ export class Marks {
   }
 
   setMode(next: Mode): Mode {
-    this.mode = this.mode === next ? 'pan' : next;
+    // Tools toggle back to Select; Select and Hand are plain choices.
+    this.mode = next === 'pen' || next === 'note' ? (this.mode === next ? 'select' : next) : next;
     this.applyPointerEvents();
     this.announce(
       this.mode === 'pen'
-        ? 'Pen mode. Hold the mouse down and drag to draw. Press Escape or P to stop.'
+        ? 'Pen. Hold the mouse down and drag to draw. Escape to stop.'
         : this.mode === 'note'
-          ? 'Note mode. Click the board to place a note.'
-          : 'Pan mode.'
+          ? 'Note. Click the board to place a note.'
+          : this.mode === 'hand'
+            ? 'Pan. Drag to move around the board.'
+            : 'Select. Drag an item to move it.'
     );
     this.onModeChange(this.mode);
     return this.mode;
   }
 
   private toPan(): void {
-    if (this.mode === 'pan') return;
-    this.mode = 'pan';
+    if (this.mode === 'select') return;
+    this.mode = 'select';
     this.applyPointerEvents();
-    this.onModeChange('pan');
+    this.onModeChange('select');
   }
 
   private applyPointerEvents(): void {
@@ -155,7 +158,7 @@ export class Marks {
 
   private attach(): void {
     this.input.addEventListener('pointerdown', (ev) => {
-      if (this.mode === 'pan') return;
+      if (this.mode !== 'pen' && this.mode !== 'note') return;
       if (ev.button !== 0) return;
       // A mark or a panel under the cursor handles its own click.
       if ((ev.target as Element | null)?.closest?.('.mark-el, .sticky-fo, .panel, .pill, .menu, .banner')) return;
@@ -219,6 +222,7 @@ export class Marks {
     wrap.className = 'sticky';
     wrap.style.background = this.palette.sticky.fill;
     wrap.style.color = this.palette.sticky.text;
+    wrap.style.border = `1px solid ${this.palette.sticky.edge}`;
 
     const grip = document.createElement('div');
     grip.className = 'sticky-grip';

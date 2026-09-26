@@ -9,12 +9,13 @@ import { buildPalette, type Palette } from './theme/palette.js';
 import { observeTheme, readSignals } from './theme/tokens.js';
 import { sketchyRenderer } from './render/sketchy.js';
 import { cleanRenderer } from './render/clean.js';
+import { boardToMermaid, canRenderAsMermaid } from './render/to-mermaid.js';
 import type { Renderer } from './render/renderer.js';
 import { describe } from './a11y/describe.js';
 import { announce, mountAnnouncer } from './a11y/announce.js';
 import { BoardFocus } from './a11y/focus.js';
 import { Viewport } from './interact/viewport.js';
-import { Marks } from './interact/marks.js';
+import { Marks, type Mode } from './interact/marks.js';
 import { DragController } from './interact/drag.js';
 import { buildToolbar, closeMenu, openMenu } from './ui/toolbar.js';
 import { SVG_NS } from './render/svg.js';
@@ -240,7 +241,20 @@ async function draw(): Promise<void> {
         const mod = await import('./render/mermaid.js');
         mermaidRenderer = mod.createMermaidRenderer();
       }
-      const svg = await mermaidRenderer.renderAsync(spec, palette);
+      // A board made of nodes and frames has no `code`; derive it, so
+      // choosing Mermaid means "the same board, laid out by mermaid" rather
+      // than a dead end.
+      let source = spec;
+      if (!(typeof spec.code === 'string' && spec.code.trim())) {
+        const derived = boardToMermaid(spec);
+        source = { ...spec, code: derived.code };
+        if (derived.warnings.length) {
+          showBanner('info', 'Shown as a mermaid flowchart.', derived.warnings.join('\n'));
+        } else {
+          banner.hidden = true;
+        }
+      }
+      const svg = await mermaidRenderer.renderAsync(source, palette);
       inner.appendChild(svg);
     } catch (e) {
       showBanner('error', 'The mermaid diagram could not be rendered.', String((e as Error).message ?? e));
@@ -377,9 +391,9 @@ function renderLibrary(): void {
   }
 }
 
-function applyMode(m: 'pan' | 'pen' | 'note'): void {
+function applyMode(m: Mode): void {
   // While a tool is armed a drag on the board must draw or place, not move.
-  drag.setEnabled(m === 'pan');
+  drag.setEnabled(m === 'select');
   for (const [name, b] of Object.entries(parts.tools)) {
     const on = name === m;
     b.setAttribute('aria-pressed', String(on));
@@ -410,11 +424,21 @@ function setStyle(next: RenderStyle): void {
 
 parts.styleBtn.onclick = () => {
   if (!menu.hidden) return closeMenu(menu);
-  openMenu(menu, parts.styleBtn, (['sketchy', 'clean', 'mermaid'] as RenderStyle[]).map((v) => ({
-    label: v === 'sketchy' ? 'Sketchy — hand-drawn' : v === 'clean' ? 'Clean — for sharing' : 'Mermaid — formal graphs',
-    checked: (spec?.style === 'mermaid' ? 'mermaid' : style) === v,
-    run: () => setStyle(v)
-  })));
+  const isMermaidBoard = typeof spec?.code === 'string' && spec.code.trim().length > 0;
+  const available: RenderStyle[] = isMermaidBoard
+    ? ['mermaid'] // nothing else can draw a board that is only mermaid source
+    : canRenderAsMermaid(spec)
+      ? ['sketchy', 'clean', 'mermaid']
+      : ['sketchy', 'clean'];
+  openMenu(
+    menu,
+    parts.styleBtn,
+    available.map((v) => ({
+      label: v === 'sketchy' ? 'Sketchy — hand-drawn' : v === 'clean' ? 'Clean — for sharing' : 'Mermaid — auto-laid out',
+      checked: (isMermaidBoard ? 'mermaid' : style) === v,
+      run: () => setStyle(v)
+    }))
+  );
 };
 
 parts.boardBtn.onclick = () => {
@@ -444,7 +468,7 @@ parts.panelBtn.onclick = () => {
 };
 
 for (const [name, b] of Object.entries(parts.tools)) {
-  b.onclick = () => applyMode(marks.setMode(name as 'pan' | 'pen' | 'note'));
+  b.onclick = () => applyMode(marks.setMode(name as Mode));
 }
 qBtn.onclick = () => toggle(qPanel, qBtn);
 
@@ -455,13 +479,23 @@ document.addEventListener('pointerdown', (e) => {
   closeMenu(menu);
 });
 
+// Space = temporary Hand, released on keyup. Standard on every canvas, and
+// the reliable way to move around a board with no empty space left.
+window.addEventListener('keyup', (e) => {
+  if (e.code === 'Space') viewport.setSpaceHeld(false);
+});
+
 window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && !(e.target as HTMLElement)?.matches?.('input, textarea')) {
+    viewport.setSpaceHeld(true);
+    e.preventDefault();
+  }
   const inField = (e.target as HTMLElement)?.matches?.('input, textarea, select');
   if (e.key === 'Escape') {
     if (!menu.hidden) closeMenu(menu);
     else if (!qPanel.hidden) toggle(qPanel, qBtn);
     else if (!libPanel.hidden) toggle(libPanel, parts.boardBtn);
-    else if (marks.getMode() !== 'pan') applyMode(marks.setMode(marks.getMode()));
+    else if (marks.getMode() !== 'select') applyMode(marks.setMode('select'));
     return;
   }
   if (inField) return;
@@ -486,7 +520,8 @@ window.addEventListener('keydown', (e) => {
     case '-': case '_': viewport.zoom(1 / 1.15); e.preventDefault(); break;
     case '0': viewport.reset(); e.preventDefault(); break;
     case 'f': case 'F': viewport.fit(); e.preventDefault(); break;
-    case 'v': case 'V': applyMode(marks.setMode('pan')); e.preventDefault(); break;
+    case 'v': case 'V': applyMode(marks.setMode('select')); e.preventDefault(); break;
+    case 'h': case 'H': applyMode(marks.setMode('hand')); e.preventDefault(); break;
     case 'p': case 'P': applyMode(marks.setMode('pen')); e.preventDefault(); break;
     case 'n': case 'N': {
       const m = marks.setMode('note');

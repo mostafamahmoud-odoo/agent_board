@@ -14,7 +14,7 @@ export interface ToolbarParts {
   bar: HTMLElement;
   viewbar: HTMLElement;
   boardBtn: HTMLButtonElement;
-  tools: Record<'pan' | 'pen' | 'note', HTMLButtonElement>;
+  tools: Record<'select' | 'hand' | 'pen' | 'note', HTMLButtonElement>;
   styleBtn: HTMLButtonElement;
   questionsBtn: HTMLButtonElement;
   panelBtn: HTMLButtonElement;
@@ -77,14 +77,19 @@ export function buildToolbar(): ToolbarParts {
   boardBtn.setAttribute('aria-expanded', 'false');
   boardBtn.innerHTML = `<span id="title">Claude Notes</span><span id="folder"></span>${svgIcon(ICON.chevron, 14)}`;
 
-  const pan = iconButton('cursor', 'Select and pan', 'Esc');
-  pan.dataset.tool = 'pan';
+  const select = iconButton('cursor', 'Select', 'V');
+  select.dataset.tool = 'select';
+  // A dedicated pan tool, as on any canvas. Without one, every attempt to move
+  // around a busy board grabs whatever is under the cursor instead.
+  const hand = iconButton('hand', 'Pan the board', 'H, or hold Space');
+  hand.dataset.tool = 'hand';
   const pen = iconButton('pen', 'Pen', 'P');
   pen.dataset.tool = 'pen';
   const note = iconButton('note', 'Sticky note', 'N');
   note.dataset.tool = 'note';
-  for (const b of [pan, pen, note]) b.setAttribute('aria-pressed', 'false');
-  pan.setAttribute('aria-pressed', 'true');
+  for (const b of [select, hand, pen, note]) b.setAttribute('aria-pressed', 'false');
+  select.setAttribute('aria-pressed', 'true');
+  select.classList.add('active');
 
   const styleBtn = iconButton('style', 'Render style');
   styleBtn.id = 'stylebtn';
@@ -97,7 +102,7 @@ export function buildToolbar(): ToolbarParts {
   questionsBtn.setAttribute('aria-controls', 'qpanel');
   questionsBtn.hidden = true;
 
-  bar.append(boardBtn, sep(), pan, pen, note, sep(), styleBtn, questionsBtn);
+  bar.append(boardBtn, sep(), select, hand, pen, note, sep(), styleBtn, questionsBtn);
 
   // Right: view controls, mirroring the canvas layout.
   const viewbar = document.createElement('div');
@@ -132,7 +137,7 @@ export function buildToolbar(): ToolbarParts {
     bar,
     viewbar,
     boardBtn,
-    tools: { pan, pen, note },
+    tools: { select, hand, pen, note },
     styleBtn,
     questionsBtn,
     panelBtn,

@@ -237,6 +237,11 @@ body.vscode-high-contrast-light .tb-btn.active {
   cursor: grab;
 }
 #canvas.grabbing { cursor: grabbing; }
+#canvas[data-tool='hand'], #canvas.space-pan { cursor: grab; }
+#canvas[data-tool='hand'].grabbing, #canvas.space-pan.grabbing { cursor: grabbing; }
+/* Only the Select tool picks things up. */
+#canvas[data-tool='select'] .board-el.draggable { cursor: grab; }
+#canvas[data-tool='select'] .mark-el { cursor: grab; }
 
 /*
  * Tool cursors. The pointer becomes the tool, so the armed mode is obvious
@@ -268,13 +273,12 @@ body.vscode-high-contrast-light .tb-btn.active {
 
 .board-el { cursor: default; }
 /* In Select mode the board's contents are objects you can pick up. */
-#canvas[data-tool='pan'] .board-el.draggable { cursor: grab; }
-#canvas[data-tool='pan'] .board-el.draggable:hover { filter: brightness(1.12); }
+#canvas[data-tool='select'] .board-el.draggable:hover { filter: brightness(1.12); }
 .board-el.dragging { cursor: grabbing; opacity: 0.85; }
 /* Marks live in the overlay, which ignores the pointer in Select mode; each
    one re-enables it for itself so it can still be picked up. */
 .mark-el { pointer-events: auto; }
-#canvas[data-tool='pan'] .mark-el { cursor: grab; }
+
 .board-el:focus { outline: none; }
 .board-el:focus-visible rect,
 .board-el:focus-visible path,
@@ -384,62 +388,79 @@ button.primary:hover { background: var(--btn-hover); }
 /* ------------------------------------------------------------- stickies */
 
 .sticky {
+  position: relative;
   display: flex;
   flex-direction: column;
   width: 100%;
   height: 100%;
-  border: 1px solid var(--hc);
-  border-radius: 4px;
-  box-shadow: 0 2px 8px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.3));
+  border-radius: 3px;
+  /* The folded corner is what says "sticky note" at a glance. */
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
   overflow: hidden;
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+.sticky::after {
+  /* the fold itself */
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 14px;
+  height: 14px;
+  background: linear-gradient(135deg, transparent 50%, rgba(0, 0, 0, 0.22) 50%);
 }
 .sticky.editing { outline: 2px solid var(--focus); outline-offset: 1px; }
-.sticky.dragging { opacity: 0.85; }
+.sticky.dragging { opacity: 0.9; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45); }
 
-/* The grip is what makes a note movable, and it is focusable so it can be
-   moved with the arrow keys too. */
+/* A quiet header strip, not a barcode. The dots read as a grip without
+   competing with the note's own text. */
 .sticky-grip {
-  height: 16px;
+  height: 15px;
   flex: none;
   cursor: grab;
-  background: repeating-linear-gradient(
-    90deg,
-    currentColor 0 2px,
-    transparent 2px 5px
-  );
-  opacity: 0.35;
+  opacity: 0.45;
+  background-image: radial-gradient(currentColor 1px, transparent 1px);
+  background-size: 6px 6px;
+  background-position: 3px 5px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
 }
+.sticky-grip:hover { opacity: 0.75; }
 .sticky-grip:active { cursor: grabbing; }
 .sticky-grip:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 
 .sticky-del {
   position: absolute;
-  top: 0;
-  right: 2px;
-  width: 18px;
+  top: -1px;
+  right: 1px;
+  width: 17px;
   height: 16px;
   padding: 0;
   border: 0;
   background: transparent;
   color: inherit;
-  opacity: 0.55;
-  font-size: 14px;
+  opacity: 0;
+  font-size: 15px;
   line-height: 1;
   cursor: pointer;
 }
+.sticky:hover .sticky-del,
+.sticky-del:focus-visible { opacity: 0.6; }
 .sticky-del:hover { opacity: 1; }
 
 .sticky-note {
   flex: 1;
   width: 100%;
   font: inherit;
-  padding: 5px 6px;
+  padding: 5px 7px 12px;
   border: 0;
   background: transparent;
   color: inherit;
   resize: none;
   outline: none;
 }
+.sticky-note::placeholder { color: currentColor; opacity: 0.45; }
 .sticky-note[readonly] { cursor: pointer; }
 
 .sticky-fo { overflow: visible; }

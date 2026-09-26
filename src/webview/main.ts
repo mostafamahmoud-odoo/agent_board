@@ -16,6 +16,7 @@ import { BoardFocus } from './a11y/focus.js';
 import { Viewport } from './interact/viewport.js';
 import { Marks } from './interact/marks.js';
 import { SVG_NS } from './render/svg.js';
+import { MARGIN } from './render/renderer.js';
 
 const vscode = acquireVsCodeApi();
 const measurer = createCanvasMeasurer();
@@ -48,6 +49,7 @@ const app = document.getElementById('app') as HTMLElement;
 app.innerHTML = '';
 
 const bar = div('bar');
+bar.id = 'bar';
 bar.setAttribute('role', 'toolbar');
 bar.setAttribute('aria-label', 'Board controls');
 const titleEl = span('title', 'Claude Notes');
@@ -91,7 +93,8 @@ canvas.appendChild(inner);
 const overlay = document.createElementNS(SVG_NS, 'svg');
 overlay.id = 'overlay';
 overlay.setAttribute('aria-hidden', 'true');
-canvas.appendChild(overlay);
+overlay.setAttribute('overflow', 'visible');
+inner.appendChild(overlay);
 
 const description = document.createElement('div');
 description.id = 'description';
@@ -121,12 +124,9 @@ let marks: Marks;
 
 const viewport = new Viewport(canvas, inner, () => {
   vscode.setState({ ...(vscode.getState() as Persisted), viewport: viewport.state, style, boardTitle: spec?.title });
-  // The overlay shares the board's transform so marks stay put under pan/zoom.
-  overlay.style.transform = inner.style.transform;
-  overlay.style.transformOrigin = '0 0';
 });
 
-marks = new Marks(overlay, viewport, post, announce, palette);
+marks = new Marks(overlay, () => overlayGroup(), viewport, post, announce, palette);
 
 /* -------------------------------------------------------------- helpers */
 
@@ -188,6 +188,34 @@ function warningText(ws: Warning[]): string {
 
 /* --------------------------------------------------------------- render */
 
+/**
+ * Aligns the mark overlay with the board it sits on.
+ *
+ * The renderer translates its group by (margin - minX, margin - minY); the
+ * overlay has to apply the same shift, or a mark recorded in board
+ * coordinates lands somewhere else entirely.
+ */
+function syncOverlay(svg: SVGSVGElement, bounds: { minX: number; minY: number }): void {
+  const w = svg.getAttribute('width') || '0';
+  const h = svg.getAttribute('height') || '0';
+  overlay.setAttribute('width', w);
+  overlay.setAttribute('height', h);
+  overlay.style.width = `${w}px`;
+  overlay.style.height = `${h}px`;
+  const g = overlayGroup();
+  g.setAttribute('transform', `translate(${MARGIN - bounds.minX},${MARGIN - bounds.minY})`);
+}
+
+/** The overlay's single transformed group; marks are drawn into it. */
+function overlayGroup(): SVGGElement {
+  let g = overlay.querySelector('g') as SVGGElement | null;
+  if (!g) {
+    g = document.createElementNS(SVG_NS, 'g');
+    overlay.appendChild(g);
+  }
+  return g;
+}
+
 function rendererFor(s: RenderStyle): Renderer {
   return s === 'clean' ? cleanRenderer : sketchyRenderer;
 }
@@ -227,6 +255,8 @@ async function draw(): Promise<void> {
     svg.setAttribute('aria-label', `Board: ${spec.title}`);
     svg.setAttribute('aria-describedby', 'description');
     inner.appendChild(svg);
+    inner.appendChild(overlay);
+    syncOverlay(svg, result.bounds);
 
     description.textContent = describe(result, spec);
 

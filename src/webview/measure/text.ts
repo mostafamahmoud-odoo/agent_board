@@ -21,7 +21,16 @@ export const FS_SCR = 12;
 export const PAD_X = 14;
 export const PAD_Y = 12;
 
-export const INK_FONT = "'Comic Sans MS', 'Segoe Print', 'Bradley Hand', cursive, sans-serif";
+/**
+ * The hand-drawn face.
+ *
+ * NOTE the absence of a bare `cursive` fallback. None of the named faces ship
+ * with most Linux installs, and generic `cursive` there is usually a formal
+ * script that looks nothing like handwriting and is hard to read at 12px. A
+ * clean UI font is a far better degradation than the wrong hand font.
+ */
+export const INK_FONT =
+  "'Comic Sans MS', 'Chalkboard SE', 'Segoe Print', 'Bradley Hand', 'Comic Neue', ui-rounded, system-ui, sans-serif";
 
 export interface TextMeasurer {
   /** Advance width of `str` at `size` px, optionally bold. */
@@ -33,12 +42,24 @@ export interface TextMeasurer {
  * the text that will actually be painted rather than a per-character guess.
  */
 export function createCanvasMeasurer(): TextMeasurer {
-  const ctx = document.createElement('canvas').getContext('2d');
-  if (!ctx) throw new Error('Claude Notes: could not acquire a 2d context for text measurement.');
+  let ctx: CanvasRenderingContext2D | null = null;
+  try {
+    ctx = document.createElement('canvas').getContext('2d');
+  } catch {
+    ctx = null;
+  }
+  // Degrade rather than die. A missing 2d context used to throw at module
+  // load, which took the whole panel down instead of costing a little layout
+  // accuracy; the approximation is what the board falls back to.
+  if (!ctx) return createFixedMeasurer();
+
+  const c = ctx;
   return {
     width(str, size, bold) {
-      ctx.font = (bold ? 'bold ' : '') + size + 'px ' + INK_FONT;
-      return ctx.measureText(str).width;
+      c.font = (bold ? 'bold ' : '') + size + 'px ' + INK_FONT;
+      const w = c.measureText(str).width;
+      // Some hosts return 0 for everything; that silently collapses the board.
+      return Number.isFinite(w) && w > 0 ? w : String(str).length * size * 0.55;
     }
   };
 }

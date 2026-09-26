@@ -114,6 +114,8 @@ export interface RoutedEdge {
   /** Stable seed derived from from/to/label, NOT the array index. */
   seed: number;
   kind?: Kind;
+  /** Measured here, not guessed at draw time — and counted in bounds. */
+  label?: { text: string; w: number; h: number };
 }
 
 /**

@@ -54,6 +54,8 @@ export class Marks {
 
   constructor(
     private readonly overlay: SVGSVGElement,
+    /** The overlay's transformed group — marks go in here, in BOARD coords. */
+    private readonly group: () => SVGGElement,
     private readonly viewport: Viewport,
     private readonly post: (m: WebviewToHost) => void,
     private readonly announce: (t: string) => void,
@@ -85,11 +87,11 @@ export class Marks {
 
   /** Draws only the marks belonging to this board. */
   restore(log: FeedbackLog, boardTitle: string | undefined): void {
-    this.overlay.replaceChildren();
+    this.group().replaceChildren();
     const mine = (t: string | undefined) => t == null || t === boardTitle;
     for (const d of log.drawings) {
       if (!mine(d.boardTitle) || !d.points?.length) continue;
-      polyline(this.overlay, d.points, { stroke: d.color || this.palette.pen, strokeWidth: 2.4 });
+      polyline(this.group(), d.points, { stroke: d.color || this.palette.pen, strokeWidth: 2.4 });
     }
     for (const s of log.stickies) {
       if (!mine(s.boardTitle)) continue;
@@ -102,7 +104,7 @@ export class Marks {
       if (this.mode === 'pen') {
         const [x, y] = this.viewport.toBoard(ev.clientX, ev.clientY);
         this.stroke = [[x, y]];
-        this.active = polyline(this.overlay, this.stroke, { stroke: this.palette.pen, strokeWidth: 2.4 });
+        this.active = polyline(this.group(), this.stroke, { stroke: this.palette.pen, strokeWidth: 2.4 });
         this.overlay.setPointerCapture(ev.pointerId);
       } else if (this.mode === 'note') {
         const [x, y] = this.viewport.toBoard(ev.clientX, ev.clientY);
@@ -185,7 +187,7 @@ export class Marks {
     }
 
     fo.appendChild(ta);
-    this.overlay.appendChild(fo);
+    this.group().appendChild(fo);
     if (editing) setTimeout(() => ta.focus(), 0);
   }
 
@@ -197,6 +199,6 @@ export class Marks {
   }
 
   clear(): void {
-    this.overlay.replaceChildren();
+    this.group().replaceChildren();
   }
 }

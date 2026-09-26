@@ -12,7 +12,7 @@
  */
 
 import type { Annotation, BoardNode, BoardSpec, Edge, Frame, Screen, Table, Warning } from '../../shared/types.js';
-import { FS_NOTE, seedOf, type TextMeasurer, widestLine, wrap } from '../measure/text.js';
+import { FS_EDGE, FS_NOTE, seedOf, type TextMeasurer, widestLine, wrap } from '../measure/text.js';
 import {
   DEFAULT_NODE_W,
   FRAME_GAP,
@@ -409,12 +409,16 @@ export function layout(spec: BoardSpec, m: TextMeasurer): LayoutResult {
     }
     // Seed from the edge's identity, not its array index: inserting an edge
     // used to reshuffle the wobble of every edge after it.
+    const labelText = e.label == null ? '' : String(e.label);
     edges.push({
       spec: e,
       from,
       to,
       seed: seedOf(e.id || `${from}->${to}|${e.label || ''}`),
-      kind: normaliseKind(e.kind).kind
+      kind: normaliseKind(e.kind).kind,
+      label: labelText
+        ? { text: labelText, w: Math.round(m.width(labelText, FS_EDGE) + 16), h: FS_EDGE + 10 }
+        : undefined
     });
   });
 
@@ -495,6 +499,17 @@ export function layout(spec: BoardSpec, m: TextMeasurer): LayoutResult {
     const badge = e.type === 'node' && (e.spec as BoardNode).badge ? 12 : 0;
     acc(e.x, e.y - badge, e.w, e.h + badge);
   }
+  // Edge labels sit at the midpoint of the route and used not to be counted
+  // at all, so a label near the board edge could be clipped.
+  for (const e of edges) {
+    if (!e.label) continue;
+    const a = placedById[e.from];
+    const bEl = placedById[e.to];
+    const mx = (a.x + a.w / 2 + bEl.x + bEl.w / 2) / 2;
+    const my = (a.y + a.h / 2 + bEl.y + bEl.h / 2) / 2;
+    acc(mx - e.label.w / 2, my - e.label.h, e.label.w, e.label.h);
+  }
+
   // Same resolved positions the renderer will paint — no second computation.
   for (const a of annotations) {
     const left = a.anchor === 'end' ? a.x - a.textW : a.anchor === 'middle' ? a.x - a.textW / 2 : a.x;

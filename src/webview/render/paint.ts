@@ -65,6 +65,9 @@ export function paint(
       stroke: f.spec.color || p.frameStroke,
       fill: p.frameFill,
       width: 1.1,
+      // A frame is background structure: a calmer line than the boxes it
+      // holds, so it frames rather than competes.
+      roughness: 0.6,
       seed: seedOf('f' + f.id),
       opacity: 0.95
     };
@@ -88,24 +91,32 @@ export function paint(
     const kc = kindOf(p, e.kind);
     const color = e.spec.color || (e.spec.kind ? kc.s : p.edge);
     const dash =
-      e.spec.style === 'dashed' ? [8, 6] : e.spec.style === 'dotted' ? [1.5, 5] : null;
-    const width = (e.spec.emphasis ? 2.4 : 1.5) * 1;
-    const [pa, pb] = anchors(a, b);
-    const pts = elbow(pa, pb);
-    pen.polyline(g, pts, { stroke: color, width, dash, seed: e.seed });
-    if (e.spec.arrow !== false) arrowHead(pen, g, pts[pts.length - 2], pts[pts.length - 1], color, e.seed, width);
-    if (e.spec.label) {
-      const mid = pts[Math.floor(pts.length / 2)];
-      const label = String(e.spec.label);
-      const tw = label.length * FS_EDGE * 0.55 + 10;
-      // A chip behind the label so it stays readable where it crosses a line.
-      pen.rect(g, mid[0] - tw / 2, mid[1] - FS_EDGE, tw, FS_EDGE + 8, {
+      e.spec.style === 'dashed' ? [9, 6] : e.spec.style === 'dotted' ? [2.5, 4] : null;
+    // Dotted lines read much fainter than solid at the same width.
+    const width = (e.spec.emphasis ? 2.6 : 1.6) * (e.spec.style === 'dotted' ? 1.35 : 1);
+    const pts = route(a, b, layout.elements);
+
+    // Stop the line short of the border so the filled head sits on it
+    // instead of overlapping the box it points at.
+    const headroom = e.spec.arrow === false ? 0 : 9 + width;
+    const drawn = trimEnd(pts, headroom);
+    pen.polyline(g, drawn, { stroke: color, width, dash, seed: e.seed });
+    if (e.spec.arrow !== false) {
+      arrowHead(pen, g, pts[pts.length - 2], pts[pts.length - 1], color, e.seed, width);
+    }
+
+    if (e.label) {
+      const mid = midpoint(pts);
+      const { w: tw, h: th } = e.label;
+      // A chip behind the label keeps it readable where it crosses a line.
+      pen.roundRect(g, mid[0] - tw / 2, mid[1] - th / 2, tw, th, 4, {
         stroke: 'transparent',
         fill: p.chip,
         width: 0,
-        seed: e.seed
+        seed: e.seed,
+        opacity: 0.92
       });
-      svgText(g, label, mid[0], mid[1] - 1, ink({ size: FS_EDGE, fill: p.muted, anchor: 'middle' }));
+      svgText(g, e.label.text, mid[0], mid[1] + FS_EDGE * 0.36, ink({ size: FS_EDGE, fill: p.muted, anchor: 'middle' }));
     }
   }
 
@@ -133,10 +144,19 @@ export function paint(
     });
     if (a.spec.arrowTo && layout.byId[a.spec.arrowTo]) {
       const t = layout.byId[a.spec.arrowTo];
-      const tx = t.x + t.w / 2;
-      const ty = t.y + t.h / 2;
-      pen.line(g, a.x, a.y + 4, tx, ty, { stroke: color, width: 1.2, dash: [6, 5], seed: a.seed });
-      arrowHead(pen, g, [a.x, a.y + 4], [tx, ty], color, a.seed, 1.2);
+      // Stop ON the border. Running to the centre drags a dashed line across
+      // the label of the very box the note is about, which is the single
+      // ugliest thing a board can do.
+      const left = a.anchor === 'end' ? a.x - a.textW : a.anchor === 'middle' ? a.x - a.textW / 2 : a.x;
+      const right = left + a.textW;
+      const cy = a.y + ((a.lines.length - 1) * (a.size + 4)) / 2 - a.size * 0.3;
+      const tc = t.x + t.w / 2;
+      // Leave from whichever edge of the text faces the target, with a small
+      // gap, so the connector never crosses the words it belongs to.
+      const from: Pt = tc >= right ? [right + 8, cy] : tc <= left ? [left - 8, cy] : [right + 8, cy];
+      const hit = borderPoint(t, from);
+      pen.line(g, from[0], from[1], hit[0], hit[1], { stroke: color, width: 1.2, dash: [6, 5], seed: a.seed });
+      arrowHead(pen, g, from, hit, color, a.seed, 1.2);
     }
     if (a.spec.underline) {
       const y2 = a.y + (a.lines.length - 1) * (a.size + 4) + 5;
@@ -410,17 +430,212 @@ function drawScreen(g: SVGGElement, s: PlacedScreen, p: Palette, pen: Pen, font:
 
 type Pt = [number, number];
 
-function anchors(a: PlacedElement, b: PlacedElement): [Pt, Pt] {
-  const ac: Pt = [a.x + a.w / 2, a.y + a.h / 2];
-  const bc: Pt = [b.x + b.w / 2, b.y + b.h / 2];
-  const dx = bc[0] - ac[0];
-  const dy = bc[1] - ac[1];
-  if (Math.abs(dx) > Math.abs(dy)) {
-    return dx > 0
-      ? [[a.x + a.w, ac[1]], [b.x, bc[1]]]
-      : [[a.x, ac[1]], [b.x + b.w, bc[1]]];
+/**
+ * Picks the pair of box sides that genuinely face each other.
+ *
+ * Choosing on the dominant axis alone makes an arrow leave the wrong side
+ * whenever two boxes are diagonal-ish but overlap on one axis. Scoring every
+ * pair and taking the shortest is both simpler to reason about and produces
+ * the route a person would draw.
+ */
+function sidesOf(e: PlacedElement): Pt[] {
+  return [
+    [e.x + e.w / 2, e.y], // top
+    [e.x + e.w, e.y + e.h / 2], // right
+    [e.x + e.w / 2, e.y + e.h], // bottom
+    [e.x, e.y + e.h / 2] // left
+  ];
+}
+
+/** Where a line from `from` towards the element's centre meets its border. */
+function borderPoint(e: PlacedElement, from: Pt): Pt {
+  const cx = e.x + e.w / 2;
+  const cy = e.y + e.h / 2;
+  const dx = from[0] - cx;
+  const dy = from[1] - cy;
+  if (dx === 0 && dy === 0) return [cx, cy];
+  const sx = dx === 0 ? Infinity : e.w / 2 / Math.abs(dx);
+  const sy = dy === 0 ? Infinity : e.h / 2 / Math.abs(dy);
+  const t = Math.min(sx, sy);
+  return [cx + dx * t, cy + dy * t];
+}
+
+/** Pulls a segment in at both ends so an endpoint lying ON a border does not count as a hit. */
+function shrink(p: Pt, q: Pt, by: number): [Pt, Pt] {
+  const len = Math.hypot(q[0] - p[0], q[1] - p[1]);
+  if (len <= by * 2) return [p, q];
+  const t = by / len;
+  return [
+    [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t],
+    [q[0] - (q[0] - p[0]) * t, q[1] - (q[1] - p[1]) * t]
+  ];
+}
+
+function segHitsBox(p: Pt, q: Pt, e: PlacedElement, pad = 4): boolean {
+  // Cheap separating-axis test against the (padded) box.
+  const x0 = Math.min(p[0], q[0]);
+  const x1 = Math.max(p[0], q[0]);
+  const y0 = Math.min(p[1], q[1]);
+  const y1 = Math.max(p[1], q[1]);
+  const bx0 = e.x - pad;
+  const bx1 = e.x + e.w + pad;
+  const by0 = e.y - pad;
+  const by1 = e.y + e.h + pad;
+  if (x1 < bx0 || x0 > bx1 || y1 < by0 || y0 > by1) return false;
+  // Axis-aligned segments (which every elbow segment is) only need the
+  // overlap test above plus a strip check.
+  if (Math.abs(p[0] - q[0]) < 0.5) return p[0] > bx0 && p[0] < bx1;
+  if (Math.abs(p[1] - q[1]) < 0.5) return p[1] > by0 && p[1] < by1;
+  return true;
+}
+
+/**
+ * Builds the route, detouring around anything in the way.
+ *
+ * A mid-point elbow can only ever split the gap between two boxes, so when
+ * the endpoints sit at opposite ends of a packed column EVERY side pair
+ * drives straight through the boxes in between — which is what a cross-frame
+ * connector looked like. When that happens, escape sideways into a lane that
+ * is clear of every obstacle, run the length there, and come back in.
+ */
+export function route(a: PlacedElement, b: PlacedElement, all: PlacedElement[]): Pt[] {
+  const others = all.filter((e) => e.id !== a.id && e.id !== b.id);
+  const [pa, pb] = anchors(a, b, all);
+  const direct = elbow(pa, pb);
+  if (countCrossings(direct, others) === 0) return direct;
+
+  // Hug only what is ACTUALLY in the way. Taking the lane from every box in
+  // the vertical band sent a short skip-one-box edge swinging right across
+  // the board, which looks worse than the crossing it was avoiding.
+  const blocking = others.filter((e) => {
+    for (let k = 1; k < direct.length; k++) {
+      const [sp, sq] = shrink(direct[k - 1], direct[k], 5);
+      if (segHitsBox(sp, sq, e)) return true;
+    }
+    return false;
+  });
+  if (!blocking.length) return direct;
+
+  const GAP = 16;
+  const rightLane = Math.max(...blocking.map((e) => e.x + e.w), a.x + a.w, b.x + b.w) + GAP;
+  const leftLane = Math.min(...blocking.map((e) => e.x), a.x, b.x) - GAP;
+  const aSide = sidesOf(a);
+  const bSide = sidesOf(b);
+  const vb = b.y > a.y ? bSide[0] : bSide[2];
+  const va = b.y > a.y ? aSide[2] : aSide[0];
+
+  const candidates: Pt[][] = [
+    direct,
+    [aSide[1], [rightLane, aSide[1][1]], [rightLane, bSide[1][1]], bSide[1]],
+    [aSide[3], [leftLane, aSide[3][1]], [leftLane, bSide[3][1]], bSide[3]],
+    [aSide[1], [rightLane, aSide[1][1]], [rightLane, vb[1]], vb],
+    [va, [va[0], (va[1] + vb[1]) / 2], [vb[0], (va[1] + vb[1]) / 2], vb]
+  ];
+
+  let best = direct;
+  let bestScore = Infinity;
+  for (const c of candidates) {
+    // A crossing is bad, but a detour three times the length is worse than
+    // slipping behind one box, so the penalty is weighed against distance
+    // rather than dwarfing it.
+    const score = countCrossings(c, others) * 1200 + routeLength(c);
+    if (score < bestScore) {
+      bestScore = score;
+      best = c;
+    }
   }
-  return dy > 0 ? [[ac[0], a.y + a.h], [bc[0], b.y]] : [[ac[0], a.y], [bc[0], b.y + b.h]];
+  return best;
+}
+
+function countCrossings(route: Pt[], others: PlacedElement[]): number {
+  let n = 0;
+  for (let k = 1; k < route.length; k++) {
+    const [sp, sq] = shrink(route[k - 1], route[k], 5);
+    for (const e of others) if (segHitsBox(sp, sq, e)) n++;
+  }
+  return n;
+}
+
+function routeLength(route: Pt[]): number {
+  let len = 0;
+  for (let k = 1; k < route.length; k++) len += Math.hypot(route[k][0] - route[k - 1][0], route[k][1] - route[k - 1][1]);
+  return len;
+}
+
+/**
+ * Picks the pair of sides that produces the cleanest route.
+ *
+ * Distance alone sends a cross-column edge straight down through every box
+ * between its endpoints - which is exactly what the first version did, and it
+ * looked like a dotted line drawn over the board rather than a connector. So
+ * candidate routes are scored on how many OTHER elements they cross first,
+ * and only then on length.
+ */
+function anchors(a: PlacedElement, b: PlacedElement, all: PlacedElement[]): [Pt, Pt] {
+  const A = sidesOf(a);
+  const B = sidesOf(b);
+  const others = all.filter((e) => e.id !== a.id && e.id !== b.id);
+
+  let best: [Pt, Pt] = [A[1], B[3]];
+  let bestScore = Infinity;
+
+  for (let i = 0; i < 4; i++) {
+    for (let j = 0; j < 4; j++) {
+      const from = A[i];
+      const to = B[j];
+      const route = elbow(from, to);
+
+      let crossings = 0;
+      let selfCross = 0;
+      for (let k = 1; k < route.length; k++) {
+        // Endpoints sit exactly on a border; pull the segment in before
+        // testing, or every route "hits" the box it starts from.
+        const [sp, sq] = shrink(route[k - 1], route[k], 5);
+        for (const e of others) if (segHitsBox(sp, sq, e)) crossings++;
+        if (segHitsBox(sp, sq, a, -3) || segHitsBox(sp, sq, b, -3)) selfCross++;
+      }
+      let len = 0;
+      for (let k = 1; k < route.length; k++) len += Math.hypot(route[k][0] - route[k - 1][0], route[k][1] - route[k - 1][1]);
+
+      // A facing pair is still preferred when nothing is in the way.
+      const facingBonus = (i + 2) % 4 === j ? 0 : 60;
+      const score = crossings * 4000 + selfCross * 12000 + len + facingBonus;
+      if (score < bestScore) {
+        bestScore = score;
+        best = [from, to];
+      }
+    }
+  }
+  return best;
+}
+
+/** Midpoint measured along the route, not the middle array element. */
+function midpoint(pts: Pt[]): Pt {
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) total += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+  let want = total / 2;
+  for (let i = 1; i < pts.length; i++) {
+    const seg = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+    if (want <= seg) {
+      const t = seg === 0 ? 0 : want / seg;
+      return [pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * t, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * t];
+    }
+    want -= seg;
+  }
+  return pts[pts.length - 1];
+}
+
+/** Shortens the route by `amount` at the arrow end. */
+function trimEnd(pts: Pt[], amount: number): Pt[] {
+  if (amount <= 0 || pts.length < 2) return pts;
+  const out = pts.slice();
+  const last = out[out.length - 1];
+  const prev = out[out.length - 2];
+  const len = Math.hypot(last[0] - prev[0], last[1] - prev[1]);
+  if (len <= amount) return out;
+  const t = (len - amount) / len;
+  out[out.length - 1] = [prev[0] + (last[0] - prev[0]) * t, prev[1] + (last[1] - prev[1]) * t];
+  return out;
 }
 
 function elbow(p: Pt, q: Pt): Pt[] {
@@ -433,18 +648,20 @@ function elbow(p: Pt, q: Pt): Pt[] {
   return [p, [mx, p[1]], [mx, q[1]], q];
 }
 
+/**
+ * A FILLED head, not two thin scratches.
+ *
+ * Two separate strokes read as scratchy at any size and disappear against a
+ * busy board; a solid triangle is what makes an arrow look deliberate. The
+ * sketchy pen still wobbles its outline, so it stays hand-drawn.
+ */
 function arrowHead(pen: Pen, g: SVGGElement, from: Pt, to: Pt, color: string, seed: number, width: number): void {
   const ang = Math.atan2(to[1] - from[1], to[0] - from[0]);
-  const len = 10;
-  const spread = 0.42;
-  pen.line(g, to[0], to[1], to[0] - len * Math.cos(ang - spread), to[1] - len * Math.sin(ang - spread), {
-    stroke: color,
-    width,
-    seed
-  });
-  pen.line(g, to[0], to[1], to[0] - len * Math.cos(ang + spread), to[1] - len * Math.sin(ang + spread), {
-    stroke: color,
-    width,
-    seed: seed + 1
-  });
+  const len = 11 + width * 1.6;
+  const spread = 0.38;
+  const p1: Pt = [to[0] - len * Math.cos(ang - spread), to[1] - len * Math.sin(ang - spread)];
+  const p2: Pt = [to[0] - len * Math.cos(ang + spread), to[1] - len * Math.sin(ang + spread)];
+  // Notch the back edge slightly so the head reads as a head, not a wedge.
+  const back: Pt = [to[0] - len * 0.72 * Math.cos(ang), to[1] - len * 0.72 * Math.sin(ang)];
+  pen.polygon(g, [to, p1, back, p2], { stroke: color, fill: color, width: width * 0.8, seed });
 }

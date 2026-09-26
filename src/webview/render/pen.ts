@@ -22,6 +22,8 @@ export interface Pen {
 }
 
 export interface Stroke {
+  /** Per-element override; frames are softer than boxes. */
+  roughness?: number;
   stroke: string;
   fill?: string;
   width?: number;
@@ -107,8 +109,13 @@ export class SketchyPen implements Pen {
     const o: Record<string, unknown> = {
       stroke: s.stroke,
       strokeWidth: s.width ?? 1.4,
-      roughness: 1.4,
-      bowing: 1.2,
+      // Tuned down from 1.4/1.2. Higher values read as scratchy rather than
+      // hand-drawn: strokes miss their corners and a board of them looks
+      // untidy instead of deliberate. `preserveVertices` keeps corners where
+      // the layout put them, which matters for boxes and elbows.
+      roughness: s.roughness ?? 0.85,
+      bowing: 0.7,
+      preserveVertices: true,
       seed: s.seed ?? 1
     };
     if (s.fill && s.fill !== 'transparent') {
@@ -117,6 +124,7 @@ export class SketchyPen implements Pen {
       if (s.hatch) {
         o.hachureAngle = -41;
         o.hachureGap = 6;
+        o.fillWeight = 1;
       }
     }
     if (s.dash) {

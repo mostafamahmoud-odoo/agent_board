@@ -11,3 +11,4 @@ out/
 tools/browser/webview.js
 tools/browser/webview.css
 tools/browser/mermaid.min.js
+tools/browser/*.vsix

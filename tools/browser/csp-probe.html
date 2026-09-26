@@ -1,0 +1,33 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<!-- The EXACT policy the panel ships. The earlier mermaid probe had no CSP
+     at all, which is why it passed while the real panel failed. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; font-src 'self' data:; script-src 'nonce-testnonce123'">
+<link rel="stylesheet" href="webview.css">
+<style nonce="testnonce123">html,body{margin:0;height:100%;background:#1e1e1e}#app{position:relative;height:100%}</style>
+</head>
+<body data-vscode-theme-kind="vscode-dark" class="vscode-dark" data-mermaid-uri="mermaid.min.js">
+<div id="app"></div><pre id="out" style="position:fixed;bottom:0;left:0;color:#8f8;font:11px monospace;z-index:99"></pre>
+<script nonce="testnonce123">
+  window.__posted=[]; let st;
+  window.acquireVsCodeApi=()=>({postMessage:m=>window.__posted.push(m),getState:()=>st,setState:s=>(st=s)});
+  window.__cspViolations=[];
+  document.addEventListener('securitypolicyviolation', e => window.__cspViolations.push(e.blockedURI + ' (' + e.violatedDirective + ')'));
+</script>
+<script type="module" nonce="testnonce123" src="webview.js"></script>
+<script nonce="testnonce123">
+window.addEventListener('load', () => setTimeout(() => {
+  window.dispatchEvent(new MessageEvent('message', { data: { type:'render', generation:1, spec:{
+    title:'csp mermaid', style:'mermaid', code:'flowchart TB\n  A[one] --> B[two]' } } }));
+  setTimeout(() => {
+    const banner = document.querySelector('#banner');
+    const shown = banner && !banner.hidden ? banner.textContent.slice(0,120) : '(none)';
+    const diagram = document.querySelector('#viewport svg[aria-label^="Diagram"]');
+    const scriptNonce = (() => { const s=document.querySelector('script[nonce]'); return JSON.stringify({ prop: s && s.nonce, attr: s && s.getAttribute('nonce') }); })();
+    document.getElementById('out').textContent =
+      'diagram rendered: ' + (diagram ? 'YES' : 'NO') +
+      '\nbanner: ' + shown +
+      '\nnonce visible to script: ' + scriptNonce +
+      '\ncsp violations: ' + (window.__cspViolations.join(' | ') || 'none');
+  }, 2500);
+}, 80));
+</script></body></html>

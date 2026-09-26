@@ -118,11 +118,25 @@ export class NotesPanel {
     const shell = path.join(this.extensionUri.fsPath, 'media', 'panel.html');
     const uri = (...parts: string[]) => w.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, ...parts)).toString();
 
+    /*
+     * SCRIPTS stay strict: nonce only, no 'unsafe-inline'. That is the
+     * directive that matters for agent-written board content.
+     *
+     * STYLES need 'unsafe-inline'. Mermaid injects a <style> element and sets
+     * `style="..."` on the nodes it draws, and it offers no way to carry a
+     * nonce — so a tight style-src renders the diagram completely unstyled.
+     * Measured: 55 style-src violations for a two-node flowchart. Inline CSS
+     * cannot execute, and mermaid itself runs at securityLevel 'strict', so
+     * this buys a working diagram at a cost confined to styling.
+     *
+     * NOTE: a nonce must NOT be added to style-src as well — a nonce makes
+     * 'unsafe-inline' be ignored, which would put us straight back.
+     */
     const csp = [
       "default-src 'none'",
-      `style-src ${w.cspSource}`,
+      `style-src ${w.cspSource} 'unsafe-inline'`,
       `img-src ${w.cspSource} https: data:`,
-      `font-src ${w.cspSource}`,
+      `font-src ${w.cspSource} data:`,
       `script-src 'nonce-${nonce}'`
     ].join('; ');
 

@@ -9,6 +9,13 @@ pointer capture or run mermaid, so two things are checked in real Chrome:
   whether arming draws (it must not), whether hovering with the button up
   draws (it must not), whether one press-drag-release makes exactly one
   stroke, and whether the pen stays armed for the next one.
+- **csp-probe.html** — mermaid under the panel's ACTUAL Content-Security-Policy,
+  and the one that matters. The no-CSP probe passed while the real panel drew a
+  completely unstyled diagram: mermaid injects a `<style>` element and per-node
+  `style=` attributes and cannot carry a nonce, so a tight `style-src` blocked
+  55 of them on a two-node flowchart. It asserts zero violations, not just
+  "something rendered".
+
 - **mermaid-probe.html** — loads the vendored UMD bundle the way the panel
   does and renders a flowchart. This is what caught `initialize is not a
   function`: the bundle is UMD, so `await import()` returns a namespace

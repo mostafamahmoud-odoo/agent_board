@@ -57,13 +57,22 @@ expect('drawings after one stroke', '1');
 expect('still armed', 'true');
 expect('drawings after two strokes', '2');
 
-// --- mermaid ---
-const mDom = dump('mermaid-probe.html');
-const rendered = /<svg[^>]*aria-label="Diagram:/.test(mDom) || /flowchart|mermaid-/.test(mDom);
-const errored = /could not be rendered|initialize is not a function/.test(mDom);
-console.log('\nmermaid:');
-console.log(`  ${rendered && !errored ? '✓' : '✗'} renders a diagram${errored ? ' (error banner present)' : ''}`);
-if (!rendered || errored) failed++;
+// --- mermaid, UNDER THE REAL CSP ---
+// The first mermaid probe had no CSP at all, so it passed while the panel
+// rendered a completely unstyled diagram: mermaid injects a <style> element
+// and per-node style attributes, and a tight style-src blocks every one.
+const cDom = dump('csp-probe.html');
+const cspOut = /<pre id="out"[^>]*>([\s\S]*?)<\/pre>/.exec(cDom)?.[1]?.replace(/&#10;/g, '\n') ?? '';
+const line = (k) => (new RegExp(`${k}: (.*)`).exec(cspOut)?.[1] ?? '').trim();
+console.log('\nmermaid (under the panel CSP):');
+const mCheck = (label, got, want) => {
+  const ok = String(got) === String(want);
+  if (!ok) failed++;
+  console.log(`  ${ok ? '✓' : '✗'} ${label}: ${got}${ok ? '' : ` (expected ${want})`}`);
+};
+mCheck('diagram renders', line('diagram rendered'), 'YES');
+mCheck('no error banner', line('banner'), '(none)');
+mCheck('no CSP violations', line('csp violations'), 'none');
 
 stop();
 console.log(failed ? `\n${failed} probe(s) failed\n` : '\nall probes passed\n');

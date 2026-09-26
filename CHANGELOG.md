@@ -6,6 +6,15 @@ The Marketplace supports only `major.minor.patch` — semver pre-release tags ar
 not valid. Following the documented convention, **even** minor versions are
 releases and **odd** minor versions are pre-releases.
 
+## [0.6.2] — unreleased
+
+### Fixed
+
+- **Mermaid diagrams rendered unstyled.** Mermaid supplies its own colours and
+  spacing as inline CSS, and the panel's security policy was rejecting all of
+  it — so a diagram appeared as bare boxes and lines. Styles from the
+  extension's own diagram engine are now allowed; script rules are unchanged.
+
 ## [0.6.1] — unreleased
 
 ### Fixed

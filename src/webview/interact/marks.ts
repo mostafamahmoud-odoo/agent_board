@@ -74,7 +74,9 @@ export class Marks {
     private readonly announce: (t: string) => void,
     private palette: Palette,
     /** Lets the toolbar follow a mode change the pen makes by itself. */
-    private readonly onModeChange: (m: Mode) => void = () => {}
+    private readonly onModeChange: (m: Mode) => void = () => {},
+    /** Lets a restored stroke be registered as draggable. */
+    private readonly onDrawing?: (g: SVGGElement, id: string) => void
   ) {
     this.attach();
   }
@@ -153,7 +155,22 @@ export class Marks {
     const mine = (t: string | undefined) => t == null || t === boardTitle;
     for (const d of log.drawings) {
       if (!mine(d.boardTitle) || !d.points?.length) continue;
-      polyline(this.group(), d.points, { stroke: d.color || this.palette.pen, strokeWidth: 2.4 });
+      // Each stroke is its OWN object, in a group with its id, so it can be
+      // picked up and moved like anything else on the board.
+      const g = el('g');
+      g.setAttribute('class', 'board-el mark-el');
+      g.setAttribute('data-mark-id', d.id);
+      g.setAttribute('role', 'graphics-object');
+      g.setAttribute('aria-label', 'Pen drawing');
+      g.setAttribute('tabindex', '-1');
+      polyline(g, d.points, { stroke: d.color || this.palette.pen, strokeWidth: 2.4 });
+      // A thick transparent copy underneath gives the thin line a grabbable
+      // hit area; 2px of ink is almost impossible to hit deliberately.
+      const grab = polyline(g, d.points, { stroke: 'transparent', strokeWidth: 16 });
+      grab.setAttribute('pointer-events', 'stroke');
+      g.insertBefore(grab, g.firstChild);
+      this.group().appendChild(g);
+      this.onDrawing?.(g, d.id);
     }
     for (const s of log.stickies) {
       if (!mine(s.boardTitle)) continue;

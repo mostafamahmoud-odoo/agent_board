@@ -2,7 +2,7 @@
   "name": "claude-notes-panel",
   "displayName": "Claude Notes Panel",
   "description": "Renders Claude's planning notes as a hand-drawn whiteboard (frames, sticky notes, margin annotations) or a mermaid diagram in a side panel, with pan/zoom and fit-to-panel.",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "license": "MIT",
   "publisher": "local",
   "engines": {
@@ -178,7 +178,8 @@
     "vscode:prepublish": "npm run package",
     "compile-tests": "tsc -p test/integration/tsconfig.json",
     "pretest": "npm run compile && npm run compile-tests",
-    "render": "node tools/render-board.mjs"
+    "render": "node tools/render-board.mjs",
+    "probe": "node tools/browser/probe.mjs"
   },
   "dependencies": {
     "roughjs": "^4.6.6"

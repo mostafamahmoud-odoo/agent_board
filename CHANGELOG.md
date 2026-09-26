@@ -6,6 +6,22 @@ The Marketplace supports only `major.minor.patch` — semver pre-release tags ar
 not valid. Following the documented convention, **even** minor versions are
 releases and **odd** minor versions are pre-releases.
 
+## [0.6.0] — unreleased
+
+### Added
+
+- **The board is objects, not a picture.** Drag any node, table, form or pen
+  stroke to reposition it. Claude still decides the layout; your move is
+  remembered as an offset against that element, so it survives Claude
+  rewriting the board — and connectors, margin notes and the board's extent
+  all follow what you moved. Arrow keys nudge a focused element.
+
+### Fixed
+
+- **Mermaid diagrams failed with "initialize is not a function".** The
+  vendored bundle is UMD and was being loaded as an ES module, which returns
+  a namespace without the API.
+
 ## [0.5.0] — unreleased
 
 ### Changed

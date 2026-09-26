@@ -8,3 +8,6 @@ out/
 coverage/
 out/
 .vscode-test/
+tools/browser/webview.js
+tools/browser/webview.css
+tools/browser/mermaid.min.js

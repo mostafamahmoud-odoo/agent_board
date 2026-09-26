@@ -267,6 +267,14 @@ body.vscode-high-contrast-light .tb-btn.active {
 #viewport > svg { display: block; }
 
 .board-el { cursor: default; }
+/* In Select mode the board's contents are objects you can pick up. */
+#canvas[data-tool='pan'] .board-el.draggable { cursor: grab; }
+#canvas[data-tool='pan'] .board-el.draggable:hover { filter: brightness(1.12); }
+.board-el.dragging { cursor: grabbing; opacity: 0.85; }
+/* Marks live in the overlay, which ignores the pointer in Select mode; each
+   one re-enables it for itself so it can still be picked up. */
+.mark-el { pointer-events: auto; }
+#canvas[data-tool='pan'] .mark-el { cursor: grab; }
 .board-el:focus { outline: none; }
 .board-el:focus-visible rect,
 .board-el:focus-visible path,

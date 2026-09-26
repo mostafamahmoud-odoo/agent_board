@@ -310,19 +310,43 @@ export interface Sticky extends FeedbackEntryBase {
   text: string;
 }
 
+/**
+ * The user moved something Claude drew.
+ *
+ * Kept in the same durable channel as the other marks, which means the board
+ * stays Claude's document (positions still come from layout) while the user's
+ * rearrangement survives a rewrite — and Claude can see that a node was moved,
+ * which is itself useful feedback.
+ *
+ * Upserted by (boardTitle, targetId): moving the same node twice replaces the
+ * offset rather than stacking another entry.
+ */
+export interface Move extends FeedbackEntryBase {
+  /** The element id from the board spec, or a mark id. */
+  targetId: string;
+  dx: number;
+  dy: number;
+}
+
 export interface FeedbackLog {
   schemaVersion?: number;
   answers: Answer[];
   drawings: Drawing[];
   stickies: Sticky[];
+  /** Optional for forward/backward compatibility with older logs. */
+  moves?: Move[];
 }
 
 export const EMPTY_FEEDBACK: FeedbackLog = {
   schemaVersion: SCHEMA_VERSION,
   answers: [],
   drawings: [],
-  stickies: []
+  stickies: [],
+  moves: []
 };
+
+/** Offsets to apply after layout, keyed by element id. */
+export type MoveMap = Record<string, { dx: number; dy: number }>;
 
 /* ------------------------------------------------------------------ */
 /* Library                                                             */

@@ -11,7 +11,7 @@
  * once (FR-041).
  */
 
-import type { Annotation, BoardNode, BoardSpec, Edge, Frame, Screen, Table, Warning } from '../../shared/types.js';
+import type { Annotation, BoardNode, BoardSpec, Edge, Frame, MoveMap, Screen, Table, Warning } from '../../shared/types.js';
 import { FS_EDGE, FS_NOTE, seedOf, type TextMeasurer, widestLine, wrap } from '../measure/text.js';
 import {
   DEFAULT_NODE_W,
@@ -53,7 +53,13 @@ interface WorkingEl {
   extra: Record<string, unknown>;
 }
 
-export function layout(spec: BoardSpec, m: TextMeasurer): LayoutResult {
+/**
+ * @param moves per-element offsets the user has dragged. Applied here rather
+ * than at draw time so edges, annotations and bounds all follow a moved node —
+ * if it were a render-time transform, connectors would still point at the old
+ * position.
+ */
+export function layout(spec: BoardSpec, m: TextMeasurer, moves: MoveMap = {}): LayoutResult {
   const warnings: Warning[] = [];
   const warn = (code: Warning['code'], path: string, message: string) =>
     warnings.push({ code, path, message });
@@ -321,6 +327,15 @@ export function layout(spec: BoardSpec, m: TextMeasurer): LayoutResult {
       e.y = looseY;
       looseY += e.h + NODE_GAP;
     }
+  }
+
+  /* --------------------------------------------- user drags, applied last */
+
+  for (const e of els) {
+    const mv = moves[e.id];
+    if (!mv) continue;
+    e.x = (e.x ?? 0) + mv.dx;
+    e.y = (e.y ?? 0) + mv.dy;
   }
 
   /* ---------------------------------------------------------- materialise */

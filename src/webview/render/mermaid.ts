@@ -4,10 +4,14 @@ import type { Palette } from '../theme/palette.js';
 /**
  * Mermaid, loaded on demand.
  *
- * The prototype pulled 3.3 MB synchronously on EVERY panel open, before
- * rough.js and before the app script, and initialised it eagerly - even
- * though most boards are sketchy and never touch it. This module is reached
- * only by a dynamic import when a mermaid board actually renders.
+ * WHY A SCRIPT TAG AND NOT `import()`: the vendored bundle is UMD, not ESM.
+ * `await import(url)` on it resolves to a module namespace that does not carry
+ * the API — the factory has already assigned itself to `globalThis.mermaid` —
+ * so calling `mod.initialize` threw "initialize is not a function". Loading it
+ * as a classic script and reading the global is what a UMD bundle expects.
+ *
+ * It is still only fetched when a mermaid board actually renders; the
+ * prototype pulled all 3.3 MB synchronously on every panel open.
  */
 
 interface MermaidApi {
@@ -15,16 +19,43 @@ interface MermaidApi {
   render(id: string, code: string): Promise<{ svg: string }>;
 }
 
-let api: MermaidApi | null = null;
+let loading: Promise<MermaidApi> | null = null;
 let themedFor: string | null = null;
 
-async function loadMermaid(): Promise<MermaidApi> {
-  if (api) return api;
-  const url = document.body.dataset.mermaidUri;
-  if (!url) throw new Error('mermaid asset URL missing from the panel shell');
-  const mod = (await import(/* @vite-ignore */ url)) as { default?: MermaidApi } & MermaidApi;
-  api = (mod.default ?? mod) as MermaidApi;
-  return api;
+function nonce(): string {
+  // Reuse the nonce the host stamped on our own module script; a dynamically
+  // injected script needs it or the CSP refuses to run it.
+  const s = document.querySelector('script[nonce]') as HTMLScriptElement | null;
+  return s?.nonce || s?.getAttribute('nonce') || '';
+}
+
+function loadMermaid(): Promise<MermaidApi> {
+  if (loading) return loading;
+
+  loading = new Promise<MermaidApi>((resolve, reject) => {
+    const existing = (window as unknown as { mermaid?: MermaidApi }).mermaid;
+    if (existing && typeof existing.initialize === 'function') return resolve(existing);
+
+    const url = document.body.dataset.mermaidUri;
+    if (!url) return reject(new Error('the mermaid asset URL is missing from the panel shell'));
+
+    const el = document.createElement('script');
+    el.src = url;
+    const n = nonce();
+    if (n) el.setAttribute('nonce', n);
+    el.onload = () => {
+      const api = (window as unknown as { mermaid?: MermaidApi }).mermaid;
+      if (api && typeof api.initialize === 'function') resolve(api);
+      else reject(new Error('mermaid loaded but did not expose its API'));
+    };
+    el.onerror = () => reject(new Error('mermaid could not be loaded from the extension bundle'));
+    document.head.appendChild(el);
+  }).catch((e) => {
+    loading = null; // let a later board try again
+    throw e;
+  });
+
+  return loading;
 }
 
 export function createMermaidRenderer() {
@@ -32,6 +63,7 @@ export function createMermaidRenderer() {
     id: 'mermaid' as const,
     async renderAsync(spec: BoardSpec, p: Palette): Promise<SVGSVGElement> {
       const m = await loadMermaid();
+
       // Re-initialise on a theme change: the prototype fixed the theme once at
       // load, so a mermaid board stayed in the old theme permanently.
       if (themedFor !== p.kind) {
@@ -46,14 +78,19 @@ export function createMermaidRenderer() {
         });
         themedFor = p.kind;
       }
+
+      const code = String(spec.code ?? '').trim();
+      if (!code) throw new Error('this board has style "mermaid" but no `code`');
+
       const id = 'mmd-' + Math.random().toString(36).slice(2, 9);
-      const { svg } = await m.render(id, String(spec.code ?? ''));
+      const { svg } = await m.render(id, code);
 
       // Parsed as a document, never innerHTML: board content is agent-written.
       const doc = new DOMParser().parseFromString(svg, 'image/svg+xml');
       const root = doc.documentElement;
-      if (root.nodeName.toLowerCase() !== 'svg') throw new Error('mermaid did not return an SVG');
-      // Strip anything scriptable that survived the parse.
+      if (root.nodeName.toLowerCase() !== 'svg') {
+        throw new Error(doc.querySelector('parsererror')?.textContent || 'mermaid did not return an SVG');
+      }
       for (const bad of Array.from(root.querySelectorAll('script, foreignObject a[href^="javascript:"]'))) {
         bad.remove();
       }

@@ -10,6 +10,7 @@ import {
   appendFeedback,
   clearFeedback,
   deleteMark,
+  recordMove,
   updateMark,
   corruptReason,
   FeedbackCorruptError,
@@ -140,6 +141,14 @@ async function onMessage(raw: unknown): Promise<void> {
         panel.post({ type: 'feedbackState', data: updateMark(msg.id, msg.patch) });
       } catch (e) {
         panel.post({ type: 'error', message: `Could not save that change. ${(e as Error).message}` });
+      }
+      return;
+
+    case 'moveElement':
+      try {
+        panel.post({ type: 'feedbackState', data: recordMove(msg.targetId, msg.dx, msg.dy, store.liveSpec?.title) });
+      } catch (e) {
+        panel.post({ type: 'error', message: `Could not save that move. ${(e as Error).message}` });
       }
       return;
 

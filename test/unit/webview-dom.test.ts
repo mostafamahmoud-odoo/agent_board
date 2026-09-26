@@ -431,6 +431,67 @@ describe('render style switching', () => {
   });
 });
 
+describe('the board is objects, not one flat picture', () => {
+  const pointerOn = (target: EventTarget, type: string, x: number, y: number) => {
+    const e = new h.dom.window.Event(type, { bubbles: true }) as unknown as Record<string, unknown>;
+    e.clientX = x; e.clientY = y; e.pointerId = 1; e.button = 0;
+    target.dispatchEvent(e as unknown as Event);
+  };
+
+  it('every element the renderer drew is individually addressable', () => {
+    const els = h.doc.querySelectorAll('#viewport svg [data-element-id]');
+    expect(els.length, 'the board drew no addressable elements').toBeGreaterThan(1);
+  });
+
+  it('elements are marked draggable in Select mode', () => {
+    const els = [...h.doc.querySelectorAll('#viewport svg [data-element-id]')];
+    expect(els.every((e) => e.classList.contains('draggable'))).toBe(true);
+  });
+
+  it('dragging a node posts a move against its id', () => {
+    const el = h.doc.querySelector('#viewport svg [data-element-id]') as SVGGElement;
+    const id = el.getAttribute('data-element-id');
+    pointerOn(el, 'pointerdown', 100, 100);
+    pointerOn(el, 'pointermove', 160, 140);
+    pointerOn(el, 'pointerup', 160, 140);
+    const mv = h.posted.find((mm) => mm.type === 'moveElement');
+    expect(mv, 'no move was recorded').toBeDefined();
+    expect((mv as { targetId: string }).targetId).toBe(id);
+  });
+
+  it('a click without movement is not a move', () => {
+    const el = h.doc.querySelector('#viewport svg [data-element-id]') as SVGGElement;
+    pointerOn(el, 'pointerdown', 100, 100);
+    pointerOn(el, 'pointerup', 100, 100);
+    expect(h.posted.some((mm) => mm.type === 'moveElement'), 'a plain click moved the node').toBe(false);
+  });
+
+  it('a tool being armed disables dragging', () => {
+    h.btn('Pen').click();
+    const el = h.doc.querySelector('#viewport svg [data-element-id]') as SVGGElement;
+    pointerOn(el, 'pointerdown', 100, 100);
+    pointerOn(el, 'pointermove', 160, 140);
+    pointerOn(el, 'pointerup', 160, 140);
+    expect(h.posted.some((mm) => mm.type === 'moveElement'), 'the board moved while the pen was out').toBe(false);
+  });
+
+  it('a pen stroke becomes its own movable object', async () => {
+    h.send({
+      type: 'feedbackState',
+      data: {
+        answers: [], stickies: [], moves: [],
+        drawings: [{ id: 'd-1', at: new Date().toISOString(), points: [[0, 0], [40, 40]], boardTitle: 'harness board' }]
+      }
+    });
+    await new Promise((r) => setTimeout(r, 20));
+    const g = h.doc.querySelector('[data-mark-id="d-1"]') as SVGGElement;
+    expect(g, 'the stroke was not drawn as its own object').not.toBeNull();
+    expect(g.classList.contains('draggable'), 'the stroke is not movable').toBe(true);
+    // a fat transparent copy makes a 2px line grabbable
+    expect(g.querySelectorAll('path').length).toBeGreaterThanOrEqual(2);
+  });
+});
+
 describe('the board renders at all', () => {
   it('produces an svg with the board content', () => {
     const svg = h.$('#viewport svg');

@@ -1,0 +1,54 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="webview.css">
+<style>html,body{margin:0;height:100%;background:#1e1e1e}#app{position:relative;height:100%}</style>
+</head>
+<body data-vscode-theme-kind="vscode-dark" class="vscode-dark" data-mermaid-uri="mermaid.min.js">
+<div id="app"></div><pre id="out" style="position:fixed;bottom:0;left:0;color:#8f8;font:12px monospace;z-index:99"></pre>
+<script nonce="n">
+  window.__posted = [];
+  let st; window.acquireVsCodeApi = () => ({ postMessage: m => window.__posted.push(m), getState: () => st, setState: s => (st = s) });
+</script>
+<script type="module" nonce="n" src="webview.js"></script>
+<script nonce="n">
+const log = [];
+const say = (k, v) => log.push(k + ': ' + v);
+const pe = (t, type, x, y) => t.dispatchEvent(new PointerEvent(type, {
+  bubbles: true, cancelable: true, clientX: x, clientY: y, pointerId: 1, button: 0, buttons: type==='pointerup'?0:1, isPrimary: true }));
+const byLabel = (l) => [...document.querySelectorAll('button')].find(b => b.getAttribute('aria-label') === l);
+
+window.addEventListener('load', () => setTimeout(() => {
+  window.dispatchEvent(new MessageEvent('message', { data: { type:'render', generation:1, spec:{
+    title:'pen check', frames:[{id:'f',title:'g',nodes:['a']}], nodes:[{id:'a',label:'node'}] } } }));
+  setTimeout(() => {
+    const pen = byLabel('Pen');
+    const canvas = document.getElementById('canvas');
+
+    // 1. select pen -> armed, nothing drawn
+    pen.click();
+    say('armed after click', pen.getAttribute('aria-pressed'));
+    say('canvas tool', canvas.dataset.tool);
+    say('drawings after arming', window.__posted.filter(m=>m.kind==='drawing').length);
+
+    // 2. move with button UP -> still nothing
+    const ov = document.getElementById('overlay');
+    for (let i=0;i<8;i++) ov.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,clientX:200+i*10,clientY:200,pointerId:1,buttons:0}));
+    say('drawings after hover', window.__posted.filter(m=>m.kind==='drawing').length);
+
+    // 3. press, drag, release -> exactly one stroke
+    const target = document.elementFromPoint(300, 300) || ov;
+    pe(target,'pointerdown',300,300);
+    for (let i=1;i<=15;i++) pe(target,'pointermove',300+i*8,300+i*4);
+    pe(target,'pointerup',420,360);
+    say('drawings after one stroke', window.__posted.filter(m=>m.kind==='drawing').length);
+    say('still armed', pen.getAttribute('aria-pressed'));
+
+    // 4. second stroke without touching the toolbar
+    pe(target,'pointerdown',300,450);
+    for (let i=1;i<=15;i++) pe(target,'pointermove',300+i*8,450);
+    pe(target,'pointerup',420,450);
+    say('drawings after two strokes', window.__posted.filter(m=>m.kind==='drawing').length);
+
+    document.getElementById('out').textContent = log.join('\n');
+  }, 250);
+}));
+</script></body></html>

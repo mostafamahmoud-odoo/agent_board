@@ -19,6 +19,7 @@ vitest.config.ts
 **/*.vsix
 **/*.zip
 scripts/**
+tools/**
 .claude/**
 
 # main points into dist/ — excluding it produces "Extension entrypoint(s)

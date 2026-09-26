@@ -36,7 +36,7 @@ export function clearCorruptLatch(): void {
 }
 
 function empty(): FeedbackLog {
-  return { schemaVersion: SCHEMA_VERSION, answers: [], drawings: [], stickies: [] };
+  return { schemaVersion: SCHEMA_VERSION, answers: [], drawings: [], stickies: [], moves: [] };
 }
 
 /**
@@ -70,7 +70,8 @@ export function readFeedback(): FeedbackLog {
     schemaVersion: typeof d.schemaVersion === 'number' ? d.schemaVersion : 1,
     answers: Array.isArray(d.answers) ? d.answers : [],
     drawings: Array.isArray(d.drawings) ? d.drawings : [],
-    stickies: Array.isArray(d.stickies) ? d.stickies : []
+    stickies: Array.isArray(d.stickies) ? d.stickies : [],
+    moves: Array.isArray(d.moves) ? d.moves : []
   };
 }
 
@@ -155,11 +156,24 @@ export function appendFeedback(
 }
 
 /** Edits a mark in place. Returns the log so the panel can re-sync. */
-export function updateMark(id: string, patch: { x?: number; y?: number; text?: string }): FeedbackLog {
+export function updateMark(
+  id: string,
+  patch: { x?: number; y?: number; text?: string; dx?: number; dy?: number }
+): FeedbackLog {
   if (!isWritable()) throw new Error('The workspace is not trusted, so the change cannot be saved.');
   const p = feedbackPath();
   const log = readFeedback();
   if (!p) return log;
+  for (const d of log.drawings) {
+    if (d.id !== id) continue;
+    // A drawing moves by offsetting every point; it has no single x/y.
+    if (patch.dx || patch.dy) {
+      d.points = d.points.map(([px, py]) => [px + (patch.dx || 0), py + (patch.dy || 0)] as [number, number]);
+      d.consumed = false;
+      writeJsonAtomic(p, log);
+    }
+    return log;
+  }
   for (const s of log.stickies) {
     if (s.id !== id) continue;
     if (patch.x != null) s.x = patch.x;
@@ -180,8 +194,32 @@ export function deleteMark(id: string): FeedbackLog {
   const log = readFeedback();
   if (!p) return log;
   log.stickies = log.stickies.filter((s) => s.id !== id);
+  log.moves = (log.moves || []).filter((m) => m.id !== id && m.targetId !== id);
   log.drawings = log.drawings.filter((d) => d.id !== id);
   log.answers = log.answers.filter((a) => a.id !== id);
+  writeJsonAtomic(p, log);
+  return log;
+}
+
+/** Upserts a move by (boardTitle, targetId). */
+export function recordMove(targetId: string, dx: number, dy: number, boardTitle?: string): FeedbackLog {
+  if (!isWritable()) throw new Error('The workspace is not trusted, so the move cannot be saved.');
+  const p = feedbackPath();
+  const log = readFeedback();
+  if (!p) return log;
+  log.moves = log.moves || [];
+  const at = new Date().toISOString();
+  const found = log.moves.find((m) => m.targetId === targetId && m.boardTitle === boardTitle);
+  if (found) {
+    found.dx = dx;
+    found.dy = dy;
+    found.at = at;
+    found.consumed = false;
+  } else if (dx !== 0 || dy !== 0) {
+    log.moves.push({ id: newId('sticky').replace(/^s/, 'x'), at, consumed: false, boardTitle, targetId, dx, dy });
+  }
+  // A move back to the original spot is not worth keeping.
+  log.moves = log.moves.filter((m) => m.dx !== 0 || m.dy !== 0);
   writeJsonAtomic(p, log);
   return log;
 }

@@ -1,6 +1,6 @@
 import './styles.css';
 
-import type { BoardSpec, FeedbackLog, LibraryEntry, RenderStyle, Warning } from '../shared/types.js';
+import type { BoardSpec, FeedbackLog, LibraryEntry, MoveMap, RenderStyle, Warning } from '../shared/types.js';
 import { isMessage, type HostToWebview, type WebviewToHost } from '../shared/protocol.js';
 import { layout } from './layout/layout.js';
 import type { LayoutResult } from './layout/types.js';
@@ -15,6 +15,7 @@ import { announce, mountAnnouncer } from './a11y/announce.js';
 import { BoardFocus } from './a11y/focus.js';
 import { Viewport } from './interact/viewport.js';
 import { Marks } from './interact/marks.js';
+import { DragController } from './interact/drag.js';
 import { buildToolbar, closeMenu, openMenu } from './ui/toolbar.js';
 import { SVG_NS } from './render/svg.js';
 import { MARGIN } from './render/renderer.js';
@@ -43,6 +44,16 @@ let library: LibraryEntry[] = [];
 let feedback: FeedbackLog = { answers: [], drawings: [], stickies: [] };
 let viewingSaved: string | null = null;
 let forcedReducedMotion = false;
+
+/** Offsets for anything the user has dragged on this board. */
+function moveMap(): MoveMap {
+  const out: MoveMap = {};
+  for (const mv of feedback.moves || []) {
+    if (mv.boardTitle != null && mv.boardTitle !== spec?.title) continue;
+    out[mv.targetId] = { dx: mv.dx, dy: mv.dy };
+  }
+  return out;
+}
 
 /* ------------------------------------------------------------------ DOM */
 
@@ -104,7 +115,23 @@ const viewport = new Viewport(canvas, inner, () => {
   if (z) z.textContent = `${Math.round(viewport.state.scale * 100)}%`;
 });
 
-marks = new Marks(overlay, () => overlayGroup(), viewport, post, announce, palette, (m) => applyMode(m));
+const drag = new DragController(
+  viewport,
+  post,
+  announce,
+  (id) => (result?.byId[id] ? 'element' : 'mark')
+);
+
+marks = new Marks(
+  overlay,
+  () => overlayGroup(),
+  viewport,
+  post,
+  announce,
+  palette,
+  (m) => applyMode(m),
+  (g, id) => drag.register(g, id, { dx: 0, dy: 0 })
+);
 
 /* -------------------------------------------------------------- helpers */
 
@@ -219,9 +246,14 @@ async function draw(): Promise<void> {
       return;
     }
   } else {
-    result = layout(spec, measurer);
+    result = layout(spec, measurer, moveMap());
+    const offsets = moveMap();
+    drag.reset();
     const svg = rendererFor(effective).render(result, palette, {
-      onElement: (g, el) => focusModel.register(g, el, result!)
+      onElement: (g, el) => {
+        focusModel.register(g, el, result!);
+        drag.register(g, el.id, offsets[el.id] ?? { dx: 0, dy: 0 });
+      }
     });
     svg.setAttribute('role', 'graphics-document');
     svg.setAttribute('aria-label', `Board: ${spec.title}`);
@@ -345,6 +377,8 @@ function renderLibrary(): void {
 }
 
 function applyMode(m: 'pan' | 'pen' | 'note'): void {
+  // While a tool is armed a drag on the board must draw or place, not move.
+  drag.setEnabled(m === 'pan');
   for (const [name, b] of Object.entries(parts.tools)) {
     const on = name === m;
     b.setAttribute('aria-pressed', String(on));
@@ -432,10 +466,21 @@ window.addEventListener('keydown', (e) => {
   if (inField) return;
 
   switch (e.key) {
-    case 'ArrowLeft': viewport.panBy(40, 0); e.preventDefault(); break;
-    case 'ArrowRight': viewport.panBy(-40, 0); e.preventDefault(); break;
-    case 'ArrowUp': viewport.panBy(0, 40); e.preventDefault(); break;
-    case 'ArrowDown': viewport.panBy(0, -40); e.preventDefault(); break;
+    case 'ArrowLeft':
+    case 'ArrowRight':
+    case 'ArrowUp':
+    case 'ArrowDown': {
+      const step = e.shiftKey ? 20 : 4;
+      const d: Record<string, [number, number]> = {
+        ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step]
+      };
+      const [nx, ny] = d[e.key];
+      // A focused element moves; otherwise the arrows pan the board.
+      const onEl = (document.activeElement as Element | null)?.closest?.('.board-el');
+      if (onEl && drag.nudge(focusModel.current, nx, ny)) e.preventDefault();
+      else { viewport.panBy(-nx * 10, -ny * 10); e.preventDefault(); }
+      break;
+    }
     case '+': case '=': viewport.zoom(1.15); e.preventDefault(); break;
     case '-': case '_': viewport.zoom(1 / 1.15); e.preventDefault(); break;
     case '0': viewport.reset(); e.preventDefault(); break;

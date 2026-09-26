@@ -173,12 +173,23 @@ export interface ClearFeedbackMessage {
 export interface UpdateMarkMessage {
   type: 'updateMark';
   id: string;
-  patch: { x?: number; y?: number; text?: string };
+  patch: { x?: number; y?: number; text?: string; dx?: number; dy?: number };
 }
 
 export interface DeleteMarkMessage {
   type: 'deleteMark';
   id: string;
+}
+
+/**
+ * The user dragged something Claude drew. Upserted per board + target, so the
+ * offset is replaced rather than accumulated into a pile of entries.
+ */
+export interface MoveElementMessage {
+  type: 'moveElement';
+  targetId: string;
+  dx: number;
+  dy: number;
 }
 
 export interface ListLibraryMessage {
@@ -232,6 +243,7 @@ export type WebviewToHost =
   | ClearFeedbackMessage
   | UpdateMarkMessage
   | DeleteMarkMessage
+  | MoveElementMessage
   | ListLibraryMessage
   | SaveBoardMessage
   | LoadFromLibraryMessage

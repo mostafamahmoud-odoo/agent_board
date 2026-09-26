@@ -1,0 +1,24 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="webview.css">
+<style>html,body{margin:0;height:100%;background:#1e1e1e}#app{position:relative;height:100%}</style>
+</head>
+<body data-vscode-theme-kind="vscode-dark" class="vscode-dark" data-mermaid-uri="mermaid.min.js">
+<div id="app"></div>
+<script nonce="testnonce">
+  window.__posted = [];
+  let st;
+  window.acquireVsCodeApi = () => ({ postMessage: m => window.__posted.push(m), getState: () => st, setState: s => (st = s) });
+  window.__errors = [];
+  window.addEventListener('error', e => window.__errors.push(String(e.message)));
+</script>
+<script type="module" nonce="testnonce" src="webview.js"></script>
+<script nonce="testnonce">
+  window.addEventListener('load', () => setTimeout(() => {
+    window.dispatchEvent(new MessageEvent('message', { data: {
+      type: 'render', generation: 1,
+      spec: { title: 'mermaid check', style: 'mermaid',
+              code: 'flowchart TB\n  A[spec] --> B[layout]\n  B --> C[sketchy]\n  B --> D[clean]\n  B --> E[describe]' } }
+    }));
+  }, 60));
+</script>
+</body></html>

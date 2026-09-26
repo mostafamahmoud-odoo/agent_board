@@ -9,8 +9,8 @@ import type { Viewport } from './viewport.js';
  *
  * Three behaviours this module gets right that the first version did not:
  *
- * 1. The pen returns to pan when the stroke ends. It used to stay armed until
- *    the button was pressed again, so the next click anywhere started drawing.
+ * 1. The pen stays armed until you turn it off, and draws only while the
+ *    mouse is held down — one press per stroke, many strokes per activation.
  * 2. A note stays editable. `commit()` used to set `readOnly = true` for good,
  *    and restored notes were read-only from birth, so a note could be created
  *    exactly once and never corrected.
@@ -58,6 +58,12 @@ export class Marks {
   private active: SVGPathElement | null = null;
   /** Set while a note is open, so a state refresh cannot wipe it mid-sentence. */
   private busy = false;
+  /**
+   * A transparent catcher so a tool works in the space AROUND the board too.
+   * The overlay is only as large as the board, and a stroke started just
+   * outside it would otherwise land on the canvas and pan instead of draw.
+   */
+  private hit: SVGRectElement | null = null;
 
   constructor(
     private readonly overlay: SVGSVGElement,
@@ -86,7 +92,7 @@ export class Marks {
     this.applyPointerEvents();
     this.announce(
       this.mode === 'pen'
-        ? 'Pen mode. Drag on the board to draw one stroke.'
+        ? 'Pen mode. Hold the mouse down and drag to draw. Press Escape or P to stop.'
         : this.mode === 'note'
           ? 'Note mode. Click the board to place a note.'
           : 'Pan mode.'
@@ -107,13 +113,43 @@ export class Marks {
     // notes stay interactive because each one re-enables pointer events on
     // itself.
     this.overlay.style.pointerEvents = this.mode === 'pan' ? 'none' : 'auto';
-    this.overlay.style.cursor = this.mode === 'pen' ? 'crosshair' : this.mode === 'note' ? 'copy' : '';
+    // The cursor goes on the CANVAS, not the overlay: the overlay is only as
+    // big as the board, so a pen cursor set there would revert to an arrow
+    // over the empty space around it.
+    const canvas = this.overlay.closest('#canvas') as HTMLElement | null;
+    if (canvas) canvas.dataset.tool = this.mode;
+    this.syncHit();
+  }
+
+  private syncHit(): void {
+    const armed = this.mode !== 'pan';
+    if (!armed) {
+      this.hit?.remove();
+      this.hit = null;
+      return;
+    }
+    if (!this.hit) {
+      this.hit = el('rect');
+      this.hit.setAttribute('x', '-20000');
+      this.hit.setAttribute('y', '-20000');
+      this.hit.setAttribute('width', '40000');
+      this.hit.setAttribute('height', '40000');
+      this.hit.setAttribute('fill', 'transparent');
+      this.hit.setAttribute('aria-hidden', 'true');
+      this.hit.setAttribute('class', 'tool-hit');
+    }
+    // First child, so it sits UNDER every existing mark - a note must stay
+    // clickable while the pen is armed.
+    const g = this.group();
+    g.insertBefore(this.hit, g.firstChild);
   }
 
   /** Draws only the marks belonging to this board. */
   restore(log: FeedbackLog, boardTitle: string | undefined): void {
     if (this.busy) return; // never yank a note out from under someone typing
     this.group().replaceChildren();
+    this.hit = null;
+    this.syncHit();
     const mine = (t: string | undefined) => t == null || t === boardTitle;
     for (const d of log.drawings) {
       if (!mine(d.boardTitle) || !d.points?.length) continue;
@@ -168,9 +204,9 @@ export class Marks {
       }
       this.active = null;
       this.stroke = [];
-      // One stroke per activation: leaving the pen armed meant the next click
-      // anywhere on the board started drawing again.
-      this.toPan();
+      // The pen STAYS armed. Releasing the mouse ends the stroke, not the
+      // tool - otherwise you would re-click Pen before every line, which is
+      // not how a drawing tool behaves anywhere else.
     };
     this.overlay.addEventListener('pointerup', finish);
     this.overlay.addEventListener('pointercancel', finish);
@@ -365,6 +401,8 @@ export class Marks {
   clear(): void {
     this.busy = false;
     this.group().replaceChildren();
+    this.hit = null;
+    this.syncHit();
   }
 }
 

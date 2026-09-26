@@ -192,9 +192,9 @@ describe('pen and note toggle', () => {
     expect(h.btn('Pen').getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('the pen returns to pan when the stroke ends', () => {
-    // It used to stay armed until the button was pressed again, so the next
-    // click anywhere started drawing.
+  it('the pen STAYS armed after a stroke, so you can draw again', () => {
+    // A drawing tool that disarms on mouse-up means re-clicking Pen before
+    // every line. Releasing ends the stroke; it does not put the tool away.
     h.btn('Pen').click();
     const overlay = h.$('#overlay') as unknown as SVGElement;
     const ev = (type: string, x: number, y: number) => {
@@ -205,8 +205,55 @@ describe('pen and note toggle', () => {
     ev('pointerdown', 10, 10);
     for (let i = 1; i <= 10; i++) ev('pointermove', 10 + i * 5, 10 + i * 3);
     ev('pointerup', 60, 40);
-    expect(h.btn('Pen').getAttribute('aria-pressed'), 'the pen stayed armed after the stroke').toBe('false');
-    expect(h.btn('Select and pan').getAttribute('aria-pressed')).toBe('true');
+    expect(h.btn('Pen').getAttribute('aria-pressed'), 'the pen disarmed itself on mouse-up').toBe('true');
+
+    // ...and a second stroke works without touching the toolbar again.
+    const before = h.posted.filter((m) => m.type === 'feedback' && m.kind === 'drawing').length;
+    ev('pointerdown', 200, 200);
+    for (let i = 1; i <= 10; i++) ev('pointermove', 200 + i * 5, 200 + i * 3);
+    ev('pointerup', 250, 230);
+    const after = h.posted.filter((m) => m.type === 'feedback' && m.kind === 'drawing').length;
+    expect(after, 'a second stroke did not draw').toBe(before + 1);
+  });
+
+  it('nothing is drawn while the mouse is up', () => {
+    h.btn('Pen').click();
+    const overlay = h.$('#overlay') as unknown as SVGElement;
+    const ev = (type: string, x: number, y: number) => {
+      const e = new h.dom.window.Event(type, { bubbles: true }) as unknown as Record<string, unknown>;
+      e.clientX = x; e.clientY = y; e.pointerId = 1;
+      overlay.dispatchEvent(e as unknown as Event);
+    };
+    for (let i = 0; i < 10; i++) ev('pointermove', 30 + i * 8, 30);
+    expect(h.posted.some((m) => m.type === 'feedback' && m.kind === 'drawing'), 'moving with the button up drew something').toBe(false);
+  });
+
+  it('Escape puts the pen away', () => {
+    h.btn('Pen').click();
+    expect(h.btn('Pen').getAttribute('aria-pressed')).toBe('true');
+    h.doc.dispatchEvent(new h.dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    h.dom.window.dispatchEvent(new h.dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(h.btn('Pen').getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('an armed tool can draw in the space around the board, not just on it', () => {
+    // The overlay is only as big as the board; without a catcher a stroke
+    // started beside it would pan instead of draw.
+    expect(h.doc.querySelector('.tool-hit'), 'a catcher exists before any tool is armed').toBeNull();
+    h.btn('Pen').click();
+    const hit = h.doc.querySelector('.tool-hit');
+    expect(hit, 'no catcher while the pen is armed').not.toBeNull();
+    expect(hit!.parentElement!.firstElementChild, 'the catcher is above the marks it should sit under').toBe(hit);
+    h.btn('Pen').click();
+    expect(h.doc.querySelector('.tool-hit'), 'the catcher outlived the tool').toBeNull();
+  });
+
+  it('the canvas advertises the armed tool, so the cursor can change', () => {
+    const canvas = h.$('#canvas') as HTMLElement;
+    h.btn('Pen').click();
+    expect(canvas.dataset.tool, 'the canvas does not know a tool is armed').toBe('pen');
+    h.btn('Sticky note').click();
+    expect(canvas.dataset.tool).toBe('note');
   });
 
   it('a drag in pen mode posts a drawing', async () => {

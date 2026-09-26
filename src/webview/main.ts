@@ -15,6 +15,7 @@ import { announce, mountAnnouncer } from './a11y/announce.js';
 import { BoardFocus } from './a11y/focus.js';
 import { Viewport } from './interact/viewport.js';
 import { Marks } from './interact/marks.js';
+import { buildToolbar, closeMenu, openMenu } from './ui/toolbar.js';
 import { SVG_NS } from './render/svg.js';
 import { MARGIN } from './render/renderer.js';
 
@@ -48,39 +49,14 @@ let forcedReducedMotion = false;
 const app = document.getElementById('app') as HTMLElement;
 app.innerHTML = '';
 
-const bar = div('bar');
-bar.id = 'bar';
-bar.setAttribute('role', 'toolbar');
-bar.setAttribute('aria-label', 'Board controls');
-const titleEl = span('title', 'Claude Notes');
-const folderEl = span('folder', '');
-const styleSel = document.createElement('select');
-styleSel.id = 'style';
-styleSel.setAttribute('aria-label', 'Render style');
-for (const s of ['sketchy', 'clean', 'mermaid'] as RenderStyle[]) {
-  const o = document.createElement('option');
-  o.value = s;
-  o.textContent = s[0].toUpperCase() + s.slice(1);
-  styleSel.appendChild(o);
-}
-const fitBtn = button('Fit', 'Fit the board to the panel (F)');
-const oneBtn = button('1:1', 'Reset zoom to 100% (0)');
-const qBtn = button('Questions', 'Answer questions Claude left on the board');
-qBtn.setAttribute('aria-expanded', 'false');
-qBtn.setAttribute('aria-controls', 'qpanel');
-const libBtn = button('Library', 'Browse saved boards');
-libBtn.setAttribute('aria-expanded', 'false');
-libBtn.setAttribute('aria-controls', 'librarypanel');
-const penBtn = button('Pen', 'Draw on the board (toggle)');
-penBtn.setAttribute('aria-pressed', 'false');
-const noteBtn = button('Note', 'Drop a sticky note (toggle)');
-noteBtn.setAttribute('aria-pressed', 'false');
-const clearBtn = button('Clear marks', 'Remove your drawings, notes and answers');
-const modeHint = span('modehint', '');
-const saveBtn = button('Save', 'Save this board to the project library');
-const copyBtn = button('Copy as text', 'Copy a text description of this board');
-const spacer = div('spacer');
-bar.append(titleEl, folderEl, styleSel, fitBtn, oneBtn, penBtn, noteBtn, modeHint, spacer, copyBtn, clearBtn, qBtn, libBtn, saveBtn);
+const parts = buildToolbar();
+const bar = parts.bar;
+const viewbar = parts.viewbar;
+const menu = parts.menu;
+const titleEl = () => document.getElementById('title') as HTMLElement;
+const folderEl = () => document.getElementById('folder') as HTMLElement;
+const zoomVal = () => document.getElementById('zoomval') as HTMLElement;
+const qBtn = parts.questionsBtn;
 
 const canvas = div('canvas');
 canvas.id = 'canvas';
@@ -117,16 +93,18 @@ libPanel.hidden = true;
 libPanel.setAttribute('role', 'dialog');
 libPanel.setAttribute('aria-label', 'Board library');
 
-app.append(bar, canvas, description, banner, qPanel, libPanel);
+app.append(bar, viewbar, canvas, description, banner, qPanel, libPanel, menu);
 mountAnnouncer(app);
 
 let marks: Marks;
 
 const viewport = new Viewport(canvas, inner, () => {
   vscode.setState({ ...(vscode.getState() as Persisted), viewport: viewport.state, style, boardTitle: spec?.title });
+  const z = zoomVal();
+  if (z) z.textContent = `${Math.round(viewport.state.scale * 100)}%`;
 });
 
-marks = new Marks(overlay, () => overlayGroup(), viewport, post, announce, palette);
+marks = new Marks(overlay, () => overlayGroup(), viewport, post, announce, palette, (m) => applyMode(m));
 
 /* -------------------------------------------------------------- helpers */
 
@@ -134,12 +112,6 @@ function div(cls: string): HTMLDivElement {
   const d = document.createElement('div');
   d.className = cls;
   return d;
-}
-function span(id: string, text: string): HTMLSpanElement {
-  const s = document.createElement('span');
-  s.id = id;
-  s.textContent = text;
-  return s;
 }
 function button(label: string, title: string): HTMLButtonElement {
   const b = document.createElement('button');
@@ -271,9 +243,9 @@ async function draw(): Promise<void> {
     }
   }
 
-  titleEl.textContent = spec.title || 'Claude Notes';
-  styleSel.value = effective;
-  styleSel.disabled = spec.style === 'mermaid';
+  titleEl().textContent = spec.title || 'Claude Notes';
+  parts.styleBtn.disabled = spec.style === 'mermaid';
+  parts.styleBtn.title = spec.style === 'mermaid' ? 'This board is a mermaid diagram' : `Render style: ${effective}`;
 
   // Only re-fit when the board is genuinely new; growing a board under one
   // title must not yank the view the user has set.
@@ -373,9 +345,11 @@ function renderLibrary(): void {
 }
 
 function applyMode(m: 'pan' | 'pen' | 'note'): void {
-  penBtn.setAttribute('aria-pressed', String(m === 'pen'));
-  noteBtn.setAttribute('aria-pressed', String(m === 'note'));
-  modeHint.textContent = m === 'pen' ? 'drawing' : m === 'note' ? 'click to place a note' : '';
+  for (const [name, b] of Object.entries(parts.tools)) {
+    const on = name === m;
+    b.setAttribute('aria-pressed', String(on));
+    b.classList.toggle('active', on);
+  }
 }
 
 function toggle(panel: HTMLElement, btn: HTMLButtonElement): void {
@@ -391,40 +365,67 @@ function toggle(panel: HTMLElement, btn: HTMLButtonElement): void {
 
 /* --------------------------------------------------------------- wiring */
 
-styleSel.onchange = () => {
-  style = styleSel.value as RenderStyle;
+function setStyle(next: RenderStyle): void {
+  style = next;
   vscode.setState({ ...(vscode.getState() as Persisted), style });
   post({ type: 'styleChanged', style });
   void draw();
   announce(`Render style: ${style}.`);
+}
+
+parts.styleBtn.onclick = () => {
+  if (!menu.hidden) return closeMenu(menu);
+  openMenu(menu, parts.styleBtn, (['sketchy', 'clean', 'mermaid'] as RenderStyle[]).map((v) => ({
+    label: v === 'sketchy' ? 'Sketchy — hand-drawn' : v === 'clean' ? 'Clean — for sharing' : 'Mermaid — formal graphs',
+    checked: (spec?.style === 'mermaid' ? 'mermaid' : style) === v,
+    run: () => setStyle(v)
+  })));
 };
-fitBtn.onclick = () => viewport.fit();
-oneBtn.onclick = () => viewport.reset();
-saveBtn.onclick = () => post({ type: 'saveBoard' });
-copyBtn.onclick = () => post({ type: 'description', text: description.textContent || '' });
-penBtn.onclick = () => applyMode(marks.setMode('pen'));
-noteBtn.onclick = () => {
-  const m = marks.setMode('note');
-  applyMode(m);
-  // Keyboard path: with no pointer, drop the note in the middle of the view.
-  if (m === 'note' && !window.matchMedia('(pointer: fine)').matches) marks.placeCentreSticky();
+
+parts.boardBtn.onclick = () => {
+  if (!menu.hidden) return closeMenu(menu);
+  openMenu(menu, parts.boardBtn, [
+    { label: 'Browse saved boards…', run: () => { post({ type: 'listLibrary' }); toggle(libPanel, parts.boardBtn); } },
+    { label: 'Save this board', run: () => post({ type: 'saveBoard' }) },
+    { label: 'Copy board as text', run: () => post({ type: 'description', text: description.textContent || '' }) },
+    { label: 'Clear my marks', run: () => { post({ type: 'clearFeedback' }); marks.clear(); announce('Marks cleared.'); } }
+  ]);
 };
-clearBtn.onclick = () => {
-  post({ type: 'clearFeedback' });
-  marks.clear();
-  announce('Marks cleared.');
+
+parts.zoomBtn.onclick = () => {
+  if (!menu.hidden) return closeMenu(menu);
+  openMenu(menu, parts.zoomBtn, [
+    { label: 'Fit to panel', hint: 'F', run: () => viewport.fit() },
+    { label: 'Zoom to 100%', hint: '0', run: () => viewport.reset() },
+    { label: 'Zoom in', hint: '+', run: () => viewport.zoom(1.25) },
+    { label: 'Zoom out', hint: '-', run: () => viewport.zoom(1 / 1.25) }
+  ]);
 };
+
+parts.panelBtn.onclick = () => {
+  const on = description.classList.toggle('shown');
+  parts.panelBtn.setAttribute('aria-expanded', String(on));
+  parts.panelBtn.setAttribute('aria-pressed', String(on));
+};
+
+for (const [name, b] of Object.entries(parts.tools)) {
+  b.onclick = () => applyMode(marks.setMode(name as 'pan' | 'pen' | 'note'));
+}
 qBtn.onclick = () => toggle(qPanel, qBtn);
-libBtn.onclick = () => {
-  post({ type: 'listLibrary' });
-  toggle(libPanel, libBtn);
-};
+
+document.addEventListener('pointerdown', (e) => {
+  const t = e.target as Element | null;
+  if (menu.hidden) return;
+  if (t?.closest('#menu, #bar, #viewbar')) return;
+  closeMenu(menu);
+});
 
 window.addEventListener('keydown', (e) => {
   const inField = (e.target as HTMLElement)?.matches?.('input, textarea, select');
   if (e.key === 'Escape') {
-    if (!qPanel.hidden) toggle(qPanel, qBtn);
-    else if (!libPanel.hidden) toggle(libPanel, libBtn);
+    if (!menu.hidden) closeMenu(menu);
+    else if (!qPanel.hidden) toggle(qPanel, qBtn);
+    else if (!libPanel.hidden) toggle(libPanel, parts.boardBtn);
     else if (marks.getMode() !== 'pan') applyMode(marks.setMode(marks.getMode()));
     return;
   }
@@ -439,6 +440,7 @@ window.addEventListener('keydown', (e) => {
     case '-': case '_': viewport.zoom(1 / 1.15); e.preventDefault(); break;
     case '0': viewport.reset(); e.preventDefault(); break;
     case 'f': case 'F': viewport.fit(); e.preventDefault(); break;
+    case 'v': case 'V': applyMode(marks.setMode('pan')); e.preventDefault(); break;
     case 'p': case 'P': applyMode(marks.setMode('pen')); e.preventDefault(); break;
     case 'n': case 'N': {
       const m = marks.setMode('note');
@@ -488,10 +490,10 @@ window.addEventListener('message', (ev: MessageEvent) => {
       highestGeneration = m.generation;
       spec = m.spec;
       viewingSaved = m.viewingSaved ?? null;
-      folderEl.textContent = m.watchedFolder ? `— watching ${m.watchedFolder}` : '';
-      folderEl.title = m.watchedFolder
-        ? `Only the first workspace folder is watched. This panel is showing "${m.watchedFolder}".`
-        : '';
+      folderEl().textContent = m.watchedFolder ? `· ${m.watchedFolder}` : '';
+      parts.boardBtn.title = m.watchedFolder
+        ? `Only the first workspace folder is watched. Showing "${m.watchedFolder}".`
+        : 'Board actions';
       if (viewingSaved) {
         showBanner('info', 'Viewing a saved board. Live updates are paused.', undefined, [
           { label: 'Back to live', title: 'Return to the board Claude is writing', run: () => post({ type: 'backToLive' }) },
@@ -541,7 +543,6 @@ window.addEventListener('message', (ev: MessageEvent) => {
     case 'setStyle':
       if (m.style) {
         style = m.style;
-        styleSel.value = m.style;
         void draw();
       }
       return;

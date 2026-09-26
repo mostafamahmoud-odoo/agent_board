@@ -6,6 +6,30 @@ The Marketplace supports only `major.minor.patch` — semver pre-release tags ar
 not valid. Following the documented convention, **even** minor versions are
 releases and **odd** minor versions are pre-releases.
 
+## [0.5.0] — unreleased
+
+### Changed
+
+- **The toolbar is now a floating pill of icon tools** over the board, with a
+  separate view pill on the right — matching Claude's canvas rather than a
+  full-width bar clamped to the top. Select, Pen and Sticky note are tools you
+  pick; the board title, library and style live in menus.
+
+### Fixed
+
+- **The pen stayed armed after you finished a stroke**, so the next click
+  anywhere started drawing again. It returns to Select when the stroke ends.
+- **A sticky note could be written exactly once and never corrected** — saving
+  it made it permanently read-only, and restored notes were read-only from the
+  start. Notes are now editable, and editing one updates it instead of leaving
+  a second copy behind.
+- **Notes could not be moved.** They now have a drag handle, which also works
+  with the arrow keys, and a delete button.
+- A hidden toolbar button was not actually hidden, so Questions appeared on
+  boards that had none.
+- Light and high-contrast themes fell back to dark colours for any token the
+  theme left undefined, which put a dark toolbar on a white board.
+
 ## [0.4.0] — unreleased
 
 The first release built as a real extension rather than a prototype: TypeScript,

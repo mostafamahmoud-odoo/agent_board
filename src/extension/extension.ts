@@ -9,6 +9,8 @@ import { listLibrary, resolveInLibrary } from './library.js';
 import {
   appendFeedback,
   clearFeedback,
+  deleteMark,
+  updateMark,
   corruptReason,
   FeedbackCorruptError,
   readFeedbackSafe
@@ -131,6 +133,22 @@ async function onMessage(raw: unknown): Promise<void> {
 
     case 'clearFeedback':
       panel.post({ type: 'feedbackState', data: clearFeedback() });
+      return;
+
+    case 'updateMark':
+      try {
+        panel.post({ type: 'feedbackState', data: updateMark(msg.id, msg.patch) });
+      } catch (e) {
+        panel.post({ type: 'error', message: `Could not save that change. ${(e as Error).message}` });
+      }
+      return;
+
+    case 'deleteMark':
+      try {
+        panel.post({ type: 'feedbackState', data: deleteMark(msg.id) });
+      } catch (e) {
+        panel.post({ type: 'error', message: `Could not delete that. ${(e as Error).message}` });
+      }
       return;
 
     case 'listLibrary':

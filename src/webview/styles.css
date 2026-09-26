@@ -34,7 +34,40 @@
   --ui-size: var(--vscode-font-size, 13px);
 }
 
+/*
+ * Theme-aware FALLBACKS. VS Code omits a CSS variable entirely when the theme
+ * does not define that colour, so a single dark-biased fallback puts a dark
+ * pill on a white board the moment a light theme leaves one out. The :root
+ * block above is the dark default; these re-point the fallbacks per theme.
+ */
+body.vscode-light {
+  --fg: var(--vscode-editor-foreground, var(--vscode-foreground, #3b3b3b));
+  --bg: var(--vscode-editor-background, #ffffff);
+  --muted: var(--vscode-descriptionForeground, #6a6a6a);
+  --border: var(--vscode-editorWidget-border, var(--vscode-widget-border, #c8c8c8));
+  --widget: var(--vscode-editorWidget-background, #f3f3f3);
+  --focus: var(--vscode-focusBorder, #005fb8);
+  --btn2-bg: var(--vscode-button-secondaryBackground, rgba(0, 0, 0, 0.07));
+  --btn2-hover: var(--vscode-button-secondaryHoverBackground, rgba(0, 0, 0, 0.12));
+  --input-bg: var(--vscode-input-background, #ffffff);
+}
+
+body.vscode-high-contrast,
+body.vscode-high-contrast-light {
+  --border: var(--vscode-contrastBorder, currentColor);
+  --widget: var(--vscode-editorWidget-background, var(--bg));
+}
+body.vscode-high-contrast-light {
+  --fg: var(--vscode-editor-foreground, #000000);
+  --bg: var(--vscode-editor-background, #ffffff);
+  --widget: var(--vscode-editorWidget-background, #ffffff);
+}
+
 * { box-sizing: border-box; }
+
+/* An explicit `display` on a class beats the `hidden` attribute, which is how
+   a hidden toolbar button stayed visible. Make hidden mean hidden. */
+[hidden] { display: none !important; }
 
 html, body {
   margin: 0;
@@ -73,54 +106,133 @@ body.vscode-high-contrast-light :focus-visible {
 
 /* --------------------------------------------------------------- toolbar */
 
-#bar {
-  position: fixed;
-  top: 0; left: 0; right: 0;
-  height: 38px;
+/*
+ * Floating pills over the board, not a bar clamped to the top. The board is
+ * the content; the chrome sits on it and takes as little room as it can.
+ */
+.pill {
+  position: absolute;
+  z-index: 20;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 10px;
+  gap: 2px;
+  padding: 5px;
   background: var(--widget);
-  border-bottom: 1px solid var(--border);
-  z-index: 20;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 2px 10px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.28));
 }
 
-#bar button, #bar select {
-  font: inherit;
-  color: var(--btn2-fg);
-  background: var(--btn2-bg);
-  border: 1px solid var(--hc);
-  border-radius: 3px;
-  padding: 3px 9px;
+#bar { top: 10px; left: 10px; max-width: calc(100% - 20px); }
+#viewbar { top: 10px; right: 10px; }
+
+.tb-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 3px 4px;
+  background: var(--border);
+}
+
+.tb-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fg);
   cursor: pointer;
 }
-#bar button:hover, #bar select:hover { background: var(--btn2-hover); }
-#bar button[aria-pressed="true"] {
-  background: var(--btn-bg);
-  color: var(--btn-fg);
+.tb-btn:hover:not([disabled]) { background: var(--btn2-bg); }
+.tb-btn[disabled] { opacity: 0.35; cursor: default; }
+
+/* Active tool: tinted, like the canvas. The border is the second channel,
+   so the state does not rest on colour alone. */
+.tb-btn.active,
+.tb-btn[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--focus) 22%, transparent);
+  border-color: var(--focus);
+  color: var(--fg);
 }
-/* Pressed state is not colour-only: a border weight change carries it too. */
-#bar button[aria-pressed="true"]::after {
-  content: "";
-  display: inline-block;
-  width: 5px; height: 5px;
-  margin-left: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  vertical-align: middle;
+body.vscode-high-contrast .tb-btn.active,
+body.vscode-high-contrast-light .tb-btn.active {
+  background: transparent;
+  border-width: 2px;
+  border-color: var(--vscode-contrastActiveBorder, var(--focus));
 }
-#bar button[disabled] { opacity: 0.4; cursor: default; }
-#bar .spacer { flex: 1; }
-#title { font-weight: 600; margin-right: 6px; }
-#folder { color: var(--muted); font-size: 0.9em; }
-#modehint { color: var(--warn); font-size: 0.9em; }
+
+.tb-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  cursor: pointer;
+  max-width: 260px;
+}
+.tb-label:hover { background: var(--btn2-bg); }
+.tb-label[disabled] { opacity: 0.35; cursor: default; }
+.tb-label svg { opacity: 0.6; flex: none; }
+
+#title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#folder { color: var(--muted); font-size: 0.9em; flex: none; }
+#zoombtn { min-width: 74px; justify-content: space-between; }
+#zoomval { font-variant-numeric: tabular-nums; }
+
+/* ----------------------------------------------------------------- menu */
+
+.menu {
+  position: fixed;
+  z-index: 40;
+  min-width: 216px;
+  padding: 5px;
+  background: var(--widget);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 6px 20px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.36));
+}
+.menu[hidden] { display: none; }
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.menu-item:hover,
+.menu-item:focus-visible { background: var(--vscode-list-hoverBackground, var(--btn2-bg)); }
+.menu-tick { width: 12px; flex: none; color: var(--focus); }
+.menu-label { flex: 1; }
+.menu-item kbd {
+  padding: 1px 5px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 0.85em;
+}
 
 /* ---------------------------------------------------------------- canvas */
 
 #canvas {
   position: absolute;
-  inset: 38px 0 0 0;
+  inset: 0;
   overflow: hidden;
   cursor: grab;
 }
@@ -152,7 +264,7 @@ body.vscode-high-contrast-light :focus-visible {
 
 .panel {
   position: absolute;
-  top: 44px;
+  top: 56px;
   right: 10px;
   width: min(420px, calc(100% - 20px));
   max-height: calc(100% - 60px);
@@ -212,7 +324,7 @@ button.primary:hover { background: var(--btn-hover); }
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  top: 46px;
+  top: 58px;
   max-width: min(720px, calc(100% - 24px));
   display: flex;
   align-items: flex-start;
@@ -237,15 +349,66 @@ button.primary:hover { background: var(--btn-hover); }
 
 /* ------------------------------------------------------------- stickies */
 
-.sticky-note {
+.sticky {
+  display: flex;
+  flex-direction: column;
   width: 100%;
   height: 100%;
-  font: inherit;
-  padding: 6px;
   border: 1px solid var(--hc);
-  border-radius: 2px;
-  resize: none;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.3));
+  overflow: hidden;
 }
+.sticky.editing { outline: 2px solid var(--focus); outline-offset: 1px; }
+.sticky.dragging { opacity: 0.85; }
+
+/* The grip is what makes a note movable, and it is focusable so it can be
+   moved with the arrow keys too. */
+.sticky-grip {
+  height: 16px;
+  flex: none;
+  cursor: grab;
+  background: repeating-linear-gradient(
+    90deg,
+    currentColor 0 2px,
+    transparent 2px 5px
+  );
+  opacity: 0.35;
+}
+.sticky-grip:active { cursor: grabbing; }
+.sticky-grip:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+
+.sticky-del {
+  position: absolute;
+  top: 0;
+  right: 2px;
+  width: 18px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  opacity: 0.55;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+.sticky-del:hover { opacity: 1; }
+
+.sticky-note {
+  flex: 1;
+  width: 100%;
+  font: inherit;
+  padding: 5px 6px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  resize: none;
+  outline: none;
+}
+.sticky-note[readonly] { cursor: pointer; }
+
+.sticky-fo { overflow: visible; }
 
 /* -------------------------------------------------- reduced motion (D5) */
 
@@ -271,6 +434,29 @@ body.vscode-reduce-motion *::after {
 
 /* When VS Code reports a screen reader, the linear description becomes the
    primary view rather than a hidden companion. */
+#description.shown {
+  position: absolute !important;
+  right: 10px;
+  top: 56px;
+  width: min(380px, calc(100% - 20px));
+  max-height: calc(100% - 72px);
+  clip: auto;
+  clip-path: none;
+  width: min(380px, calc(100% - 20px));
+  height: auto;
+  margin: 0;
+  padding: 12px 14px;
+  overflow: auto;
+  white-space: pre-wrap;
+  background: var(--widget);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 6px 20px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.36));
+  z-index: 16;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 0.92em;
+}
+
 body.vscode-using-screen-reader #description {
   position: static !important;
   width: auto; height: auto;
@@ -282,4 +468,4 @@ body.vscode-using-screen-reader #description {
   border-bottom: 1px solid var(--border);
   max-height: 55%;
 }
-body.vscode-using-screen-reader #canvas { inset: 38px 0 0 0; }
+body.vscode-using-screen-reader #canvas { inset: 0; }

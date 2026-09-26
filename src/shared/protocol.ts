@@ -163,6 +163,24 @@ export interface ClearFeedbackMessage {
   type: 'clearFeedback';
 }
 
+/**
+ * Edit a mark in place rather than appending another one.
+ *
+ * Without this a sticky could only ever be created: re-editing it appended a
+ * second entry, and moving it was impossible because position was fixed at
+ * creation.
+ */
+export interface UpdateMarkMessage {
+  type: 'updateMark';
+  id: string;
+  patch: { x?: number; y?: number; text?: string };
+}
+
+export interface DeleteMarkMessage {
+  type: 'deleteMark';
+  id: string;
+}
+
 export interface ListLibraryMessage {
   type: 'listLibrary';
 }
@@ -212,6 +230,8 @@ export type WebviewToHost =
   | ReadyMessage
   | FeedbackMessage
   | ClearFeedbackMessage
+  | UpdateMarkMessage
+  | DeleteMarkMessage
   | ListLibraryMessage
   | SaveBoardMessage
   | LoadFromLibraryMessage

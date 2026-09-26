@@ -98,8 +98,13 @@ async function boot(): Promise<Harness> {
       return doc.querySelector(sel);
     },
     btn(label) {
-      const b = [...doc.querySelectorAll('button')].find((x) => x.textContent?.trim() === label);
-      if (!b) throw new Error(`no button labelled "${label}". Found: ${[...doc.querySelectorAll('button')].map((x) => x.textContent).join(', ')}`);
+      const all = [...doc.querySelectorAll('button')];
+      const b = all.find((x) => (x.getAttribute('aria-label') || x.textContent || '').trim() === label);
+      if (!b) {
+        throw new Error(
+          `no button named "${label}". Found: ${all.map((x) => x.getAttribute('aria-label') || x.textContent).join(' | ')}`
+        );
+      }
       return b as HTMLButtonElement;
     }
   };
@@ -140,16 +145,19 @@ describe('the toolbar is actually wired to its stylesheet', () => {
     expect(missing, `stylesheet targets ids that do not exist: ${missing.join(', ')}`).toEqual([]);
   });
 
-  it('the canvas sits below the toolbar rather than under it', () => {
-    const bar = h.$('#bar') as HTMLElement;
-    expect(bar).not.toBeNull();
-    // The stylesheet reserves 38px; the bar must declare a matching height.
+  it('the hidden attribute actually hides a toolbar button', () => {
+    // `.tb-btn { display: inline-flex }` beat the `hidden` attribute, so the
+    // Questions button showed on boards that had no questions.
     const css = fs.readFileSync(cssPath, 'utf8');
-    const barH = /#bar\s*\{[^}]*height:\s*(\d+)px/.exec(css)?.[1];
-    const canvasTop = /#canvas\s*\{[^}]*inset:\s*(\d+)px/.exec(css)?.[1];
-    expect(barH, 'no #bar height in the stylesheet').toBeDefined();
-    expect(canvasTop, 'no #canvas inset in the stylesheet').toBeDefined();
-    expect(canvasTop).toBe(barH);
+    expect(css, 'nothing makes [hidden] win over a class display rule').toMatch(/\[hidden\][^{]*\{[^}]*display:\s*none/);
+  });
+
+  it('every toolbar control has an accessible name', () => {
+    // The toolbar is icon-only, so this is the only thing naming its controls.
+    const unnamed = [...h.doc.querySelectorAll('#bar button, #viewbar button')].filter(
+      (b) => !(b.getAttribute('aria-label') || b.textContent || '').trim()
+    );
+    expect(unnamed).toHaveLength(0);
   });
 });
 
@@ -173,14 +181,32 @@ describe('pen and note toggle', () => {
 
   it('Pen and Note are mutually exclusive', () => {
     h.btn('Pen').click();
-    h.btn('Note').click();
+    h.btn('Sticky note').click();
     expect(h.btn('Pen').getAttribute('aria-pressed')).toBe('false');
-    expect(h.btn('Note').getAttribute('aria-pressed')).toBe('true');
+    expect(h.btn('Sticky note').getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('the mode hint tells the user what to do', () => {
+  it('selecting a tool deselects the others', () => {
     h.btn('Pen').click();
-    expect((h.$('#modehint') as HTMLElement).textContent).toMatch(/draw/i);
+    expect(h.btn('Select and pan').getAttribute('aria-pressed')).toBe('false');
+    expect(h.btn('Pen').getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('the pen returns to pan when the stroke ends', () => {
+    // It used to stay armed until the button was pressed again, so the next
+    // click anywhere started drawing.
+    h.btn('Pen').click();
+    const overlay = h.$('#overlay') as unknown as SVGElement;
+    const ev = (type: string, x: number, y: number) => {
+      const e = new h.dom.window.Event(type, { bubbles: true }) as unknown as Record<string, unknown>;
+      e.clientX = x; e.clientY = y; e.pointerId = 1;
+      overlay.dispatchEvent(e as unknown as Event);
+    };
+    ev('pointerdown', 10, 10);
+    for (let i = 1; i <= 10; i++) ev('pointermove', 10 + i * 5, 10 + i * 3);
+    ev('pointerup', 60, 40);
+    expect(h.btn('Pen').getAttribute('aria-pressed'), 'the pen stayed armed after the stroke').toBe('false');
+    expect(h.btn('Select and pan').getAttribute('aria-pressed')).toBe('true');
   });
 
   it('a drag in pen mode posts a drawing', async () => {
@@ -204,8 +230,110 @@ describe('pen and note toggle', () => {
     expect(pts.length, 'stroke was not decimated').toBeLessThan(20);
   });
 
+  const pointer = (target: EventTarget, type: string, x: number, y: number) => {
+    const e = new h.dom.window.Event(type, { bubbles: true }) as unknown as Record<string, unknown>;
+    e.clientX = x; e.clientY = y; e.pointerId = 1;
+    target.dispatchEvent(e as unknown as Event);
+  };
+
+  const placeNote = (text: string) => {
+    h.btn('Sticky note').click();
+    pointer(h.$('#overlay')!, 'pointerdown', 40, 40);
+    const ta = h.$('.sticky-note') as HTMLTextAreaElement;
+    ta.value = text;
+    ta.dispatchEvent(new h.dom.window.Event('blur', { bubbles: false }));
+    return ta;
+  };
+
+  it('a new note is editable, not read-only', () => {
+    h.btn('Sticky note').click();
+    pointer(h.$('#overlay')!, 'pointerdown', 40, 40);
+    const ta = h.$('.sticky-note') as HTMLTextAreaElement;
+    expect(ta, 'no sticky was created').not.toBeNull();
+    expect(ta.readOnly, 'a brand new note was read-only').toBe(false);
+  });
+
+  it('an existing note can be re-opened for editing', async () => {
+    // commit() used to set readOnly = true permanently, so a note could be
+    // written exactly once and never corrected.
+    h.send({
+      type: 'feedbackState',
+      data: {
+        answers: [], drawings: [],
+        stickies: [{ id: 's-1', at: new Date().toISOString(), x: 10, y: 10, text: 'existing', boardTitle: 'harness board' }]
+      }
+    });
+    await new Promise((r) => setTimeout(r, 20));
+    const ta = h.$('.sticky-note') as HTMLTextAreaElement;
+    expect(ta, 'the restored note was not drawn').not.toBeNull();
+    expect(ta.value).toBe('existing');
+    pointer(ta, 'pointerdown', 20, 20);
+    expect(ta.readOnly, 'clicking a restored note did not make it editable').toBe(false);
+  });
+
+  it('editing an existing note UPDATES it instead of adding a second one', async () => {
+    h.send({
+      type: 'feedbackState',
+      data: {
+        answers: [], drawings: [],
+        stickies: [{ id: 's-1', at: new Date().toISOString(), x: 10, y: 10, text: 'before', boardTitle: 'harness board' }]
+      }
+    });
+    await new Promise((r) => setTimeout(r, 20));
+    const ta = h.$('.sticky-note') as HTMLTextAreaElement;
+    pointer(ta, 'pointerdown', 20, 20);
+    ta.value = 'after';
+    ta.dispatchEvent(new h.dom.window.Event('blur', { bubbles: false }));
+
+    const update = h.posted.find((m) => m.type === 'updateMark');
+    expect(update, 'an edit did not post updateMark').toBeDefined();
+    expect((update as { id: string }).id).toBe('s-1');
+    expect(h.posted.some((m) => m.type === 'feedback' && m.kind === 'sticky'), 'the edit appended a duplicate note').toBe(false);
+  });
+
+  it('a note can be dragged, and the move is persisted', async () => {
+    h.send({
+      type: 'feedbackState',
+      data: {
+        answers: [], drawings: [],
+        stickies: [{ id: 's-1', at: new Date().toISOString(), x: 10, y: 10, text: 'drag me', boardTitle: 'harness board' }]
+      }
+    });
+    await new Promise((r) => setTimeout(r, 20));
+    const grip = h.$('.sticky-grip') as HTMLElement;
+    expect(grip, 'a note has no drag handle').not.toBeNull();
+    const fo = h.$('.sticky-fo') as unknown as SVGElement;
+    const x0 = fo.getAttribute('x');
+    pointer(grip, 'pointerdown', 50, 50);
+    pointer(grip, 'pointermove', 140, 96);
+    pointer(grip, 'pointerup', 140, 96);
+    expect(fo.getAttribute('x'), 'the note did not move').not.toBe(x0);
+    const moved = h.posted.filter((m) => m.type === 'updateMark');
+    expect(moved.length, 'the move was not persisted').toBeGreaterThan(0);
+  });
+
+  it('a note can be deleted', async () => {
+    h.send({
+      type: 'feedbackState',
+      data: {
+        answers: [], drawings: [],
+        stickies: [{ id: 's-1', at: new Date().toISOString(), x: 10, y: 10, text: 'bye', boardTitle: 'harness board' }]
+      }
+    });
+    await new Promise((r) => setTimeout(r, 20));
+    (h.$('.sticky-del') as HTMLButtonElement).click();
+    expect(h.$('.sticky-note'), 'the note is still on the board').toBeNull();
+    expect(h.posted.some((m) => m.type === 'deleteMark')).toBe(true);
+  });
+
+  it('an empty note is discarded rather than saved', () => {
+    placeNote('   ');
+    expect(h.$('.sticky-note')).toBeNull();
+    expect(h.posted.some((m) => m.type === 'feedback' && m.kind === 'sticky')).toBe(false);
+  });
+
   it('a click in note mode creates an editable sticky', () => {
-    h.btn('Note').click();
+    h.btn('Sticky note').click();
     const overlay = h.$('#overlay') as unknown as SVGElement;
     const e = new h.dom.window.Event('pointerdown', { bubbles: true }) as unknown as Record<string, unknown>;
     e.clientX = 40;
@@ -217,43 +345,42 @@ describe('pen and note toggle', () => {
 });
 
 describe('render style switching', () => {
-  it('the selector exists and offers all three styles', () => {
-    const sel = h.$('#style') as HTMLSelectElement;
-    expect(sel).not.toBeNull();
-    expect([...sel.options].map((o) => o.value)).toEqual(['sketchy', 'clean', 'mermaid']);
+  const openStyleMenu = () => {
+    h.btn('Render style').click();
+    return [...h.doc.querySelectorAll('#menu .menu-item')] as HTMLButtonElement[];
+  };
+
+  it('the style menu offers all three styles', () => {
+    const items = openStyleMenu();
+    expect(items.map((i) => i.textContent)).toHaveLength(3);
+    expect(items.map((i) => i.textContent).join(' ')).toMatch(/Sketchy.*Clean.*Mermaid/s);
   });
 
-  it('changing it redraws and tells the host', () => {
-    const sel = h.$('#style') as HTMLSelectElement;
+  it('choosing a style redraws and tells the host', () => {
     const before = h.$('#viewport')!.innerHTML;
-    sel.value = 'clean';
-    sel.dispatchEvent(new h.dom.window.Event('change', { bubbles: true }));
-
+    openStyleMenu()[1].click(); // Clean
     expect(h.posted.some((m) => m.type === 'styleChanged' && m.style === 'clean')).toBe(true);
     expect(h.$('#viewport')!.innerHTML, 'the board did not re-render in the new style').not.toBe(before);
   });
 
   it('clean output has no rough.js multi-stroke paths', () => {
-    const sel = h.$('#style') as HTMLSelectElement;
-    sel.value = 'clean';
-    sel.dispatchEvent(new h.dom.window.Event('change', { bubbles: true }));
+    openStyleMenu()[1].click();
     const svg = h.$('#viewport svg')!;
     // The clean pen emits <rect>; the sketchy pen emits only <path>.
     expect(svg.querySelectorAll('rect').length, 'clean style drew no rects — it is still the sketchy pen').toBeGreaterThan(0);
   });
 
-  it('a setStyle message from the host switches the style', () => {
+  it('a setStyle message from the host switches the style', async () => {
     h.send({ type: 'setStyle', style: 'clean' });
-    expect((h.$('#style') as HTMLSelectElement).value).toBe('clean');
+    await new Promise((r) => setTimeout(r, 20));
+    expect(h.$('#viewport svg')!.querySelectorAll('rect').length).toBeGreaterThan(0);
   });
 
   it('the style survives a re-render of the same board', async () => {
-    const sel = h.$('#style') as HTMLSelectElement;
-    sel.value = 'clean';
-    sel.dispatchEvent(new h.dom.window.Event('change', { bubbles: true }));
+    openStyleMenu()[1].click();
     h.send({ type: 'render', spec: BOARD, generation: 2 });
     await new Promise((r) => setTimeout(r, 30));
-    expect(sel.value, 'the style reset itself on the next board update').toBe('clean');
+    expect(h.$('#viewport svg')!.querySelectorAll('rect').length, 'the style reset on the next update').toBeGreaterThan(0);
   });
 });
 
@@ -270,7 +397,7 @@ describe('the board renders at all', () => {
   });
 
   it('shows the questions button when the board has questions', () => {
-    expect((h.btn('Questions') as HTMLButtonElement).hidden).toBe(false);
+    expect(h.btn('Questions from Claude').hidden).toBe(false);
   });
 
   it('drops a superseded render', async () => {

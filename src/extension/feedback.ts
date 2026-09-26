@@ -154,6 +154,38 @@ export function appendFeedback(
   return log;
 }
 
+/** Edits a mark in place. Returns the log so the panel can re-sync. */
+export function updateMark(id: string, patch: { x?: number; y?: number; text?: string }): FeedbackLog {
+  if (!isWritable()) throw new Error('The workspace is not trusted, so the change cannot be saved.');
+  const p = feedbackPath();
+  const log = readFeedback();
+  if (!p) return log;
+  for (const s of log.stickies) {
+    if (s.id !== id) continue;
+    if (patch.x != null) s.x = patch.x;
+    if (patch.y != null) s.y = patch.y;
+    if (patch.text != null) s.text = patch.text;
+    // An edited mark is the user's latest word on it, so it goes back to
+    // pending even if a previous version was already handed over.
+    s.consumed = false;
+    writeJsonAtomic(p, log);
+    return log;
+  }
+  return log;
+}
+
+export function deleteMark(id: string): FeedbackLog {
+  if (!isWritable()) throw new Error('The workspace is not trusted, so the change cannot be saved.');
+  const p = feedbackPath();
+  const log = readFeedback();
+  if (!p) return log;
+  log.stickies = log.stickies.filter((s) => s.id !== id);
+  log.drawings = log.drawings.filter((d) => d.id !== id);
+  log.answers = log.answers.filter((a) => a.id !== id);
+  writeJsonAtomic(p, log);
+  return log;
+}
+
 export function pendingCount(log = readFeedbackSafe()): number {
   return [...log.answers, ...log.drawings, ...log.stickies].filter((e) => !e.consumed).length;
 }

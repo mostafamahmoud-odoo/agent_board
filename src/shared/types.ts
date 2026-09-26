@@ -18,7 +18,7 @@ export type Shape = 'rect' | 'round' | 'pill' | 'note' | 'ellipse' | 'diamond' |
 
 export const SHAPES: readonly Shape[] = ['rect', 'round', 'pill', 'note', 'ellipse', 'diamond', 'cyl'];
 
-export type RenderStyle = 'sketchy' | 'clean' | 'mermaid';
+export type RenderStyle = 'sketchy' | 'clean' | 'mermaid' | 'drawio';
 
 export type ThemeKind = 'dark' | 'light' | 'high-contrast-dark' | 'high-contrast-light';
 

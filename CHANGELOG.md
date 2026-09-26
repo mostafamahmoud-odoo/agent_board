@@ -6,6 +6,20 @@ The Marketplace supports only `major.minor.patch` — semver pre-release tags ar
 not valid. Following the documented convention, **even** minor versions are
 releases and **odd** minor versions are pre-releases.
 
+## [0.8.0] — unreleased
+
+### Added
+
+- **draw.io as a canvas.** A new render style opens the board in an embedded
+  draw.io editor — a full canvas with everything that brings. Claude's layout
+  still decides where things start, so a board opens looking like the board
+  Claude drew, and draw.io takes over from there. Your edits are kept per
+  board.
+- `claudeNotes.drawioUrl` points at a self-hosted copy for offline use. The
+  default uses the public editor and **needs internet**; the app is ~107 MB,
+  so it is deliberately not bundled.
+- `claudeNotes.drawioSketch` keeps the hand-drawn look inside draw.io.
+
 ## [0.7.0] — unreleased
 
 ### Added

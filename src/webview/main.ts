@@ -10,6 +10,7 @@ import { observeTheme, readSignals } from './theme/tokens.js';
 import { sketchyRenderer } from './render/sketchy.js';
 import { cleanRenderer } from './render/clean.js';
 import { boardToMermaid, canRenderAsMermaid } from './render/to-mermaid.js';
+import { DrawioCanvas, resolveEmbedUrl } from './render/drawio.js';
 import type { Renderer } from './render/renderer.js';
 import { describe } from './a11y/describe.js';
 import { announce, mountAnnouncer } from './a11y/announce.js';
@@ -27,6 +28,8 @@ const focusModel = new BoardFocus();
 
 interface Persisted {
   style?: RenderStyle;
+  drawioXml?: string;
+  drawioForTitle?: string;
   viewport?: { scale: number; tx: number; ty: number };
   boardTitle?: string;
 }
@@ -45,6 +48,10 @@ let library: LibraryEntry[] = [];
 let feedback: FeedbackLog = { answers: [], drawings: [], stickies: [] };
 let viewingSaved: string | null = null;
 let forcedReducedMotion = false;
+let drawio: DrawioCanvas | null = null;
+/** The user's draw.io edits, kept per board so a redraw does not lose them. */
+let drawioXml: string | null = null;
+let drawioForTitle: string | null = null;
 
 /** Offsets for anything the user has dragged on this board. */
 function moveMap(): MoveMap {
@@ -232,6 +239,46 @@ async function draw(): Promise<void> {
 
   inner.replaceChildren();
   focusModel.reset();
+
+  if (effective === 'drawio') {
+    inner.replaceChildren();
+    overlay.remove();
+    result = layout(spec, measurer, moveMap());
+    description.textContent = describe(result, spec);
+
+    if (!drawio) {
+      const url = resolveEmbedUrl(document.body.dataset.drawioUrl, palette.kind !== 'light' && palette.kind !== 'high-contrast-light');
+      drawio = new DrawioCanvas(inner, url, {
+        onEdit: (xml) => {
+          // The user's version of this board. Kept in webview state so a
+          // theme change or a redraw does not throw their work away.
+          drawioXml = xml;
+          drawioForTitle = spec?.title ?? null;
+          vscode.setState({ ...(vscode.getState() as Persisted), drawioXml, drawioForTitle });
+        },
+        onReady: () => announce('draw.io canvas ready.'),
+        onError: (m) => showBanner('error', 'The draw.io canvas reported a problem.', m)
+      });
+      drawio.mount();
+    }
+
+    // Reopen the user's edited version of THIS board; otherwise start from
+    // the board Claude drew.
+    const sketch = document.body.dataset.drawioSketch !== 'false';
+    if (drawioXml && drawioForTitle === spec.title) drawio.loadXml(drawioXml);
+    else drawio.load(result, spec, palette, sketch);
+
+    titleEl().textContent = spec.title || 'Claude Notes';
+    banner.hidden = true;
+    renderQuestions();
+    return;
+  }
+
+  if (drawio) {
+    drawio.dispose();
+    drawio = null;
+    if (!overlay.isConnected) inner.appendChild(overlay);
+  }
 
   if (effective === 'mermaid') {
     // Loaded ONLY when a board actually needs it: the prototype pulled 3.3 MB
@@ -428,13 +475,20 @@ parts.styleBtn.onclick = () => {
   const available: RenderStyle[] = isMermaidBoard
     ? ['mermaid'] // nothing else can draw a board that is only mermaid source
     : canRenderAsMermaid(spec)
-      ? ['sketchy', 'clean', 'mermaid']
-      : ['sketchy', 'clean'];
+      ? ['sketchy', 'clean', 'mermaid', 'drawio']
+      : ['sketchy', 'clean', 'drawio'];
   openMenu(
     menu,
     parts.styleBtn,
     available.map((v) => ({
-      label: v === 'sketchy' ? 'Sketchy — hand-drawn' : v === 'clean' ? 'Clean — for sharing' : 'Mermaid — auto-laid out',
+      label:
+        v === 'sketchy'
+          ? 'Sketchy — hand-drawn'
+          : v === 'clean'
+            ? 'Clean — for sharing'
+            : v === 'mermaid'
+              ? 'Mermaid — auto-laid out'
+              : 'draw.io — full editing canvas',
       checked: (isMermaidBoard ? 'mermaid' : style) === v,
       run: () => setStyle(v)
     }))

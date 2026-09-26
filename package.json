@@ -2,7 +2,7 @@
   "name": "claude-notes-panel",
   "displayName": "Claude Notes Panel",
   "description": "Renders Claude's planning notes as a hand-drawn whiteboard (frames, sticky notes, margin annotations) or a mermaid diagram in a side panel, with pan/zoom and fit-to-panel.",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "license": "MIT",
   "publisher": "local",
   "engines": {
@@ -119,13 +119,15 @@
           "enum": [
             "sketchy",
             "clean",
-            "mermaid"
+            "mermaid",
+            "drawio"
           ],
           "default": "sketchy",
           "enumDescriptions": [
             "Hand-drawn whiteboard",
             "Precise SVG, for sharing",
-            "Formal graph types"
+            "Formal graph types",
+            "draw.io \u2014 a full editing canvas"
           ],
           "description": "Render style used when a board does not declare one."
         },
@@ -163,6 +165,16 @@
             "Never animate in this panel"
           ],
           "description": "VS Code already owns this preference; 'always' forces motion off for this panel alone."
+        },
+        "claudeNotes.drawioUrl": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Where the draw.io editor is served from. Empty uses `https://embed.diagrams.net/`, which **requires internet**. For offline use, serve a copy of the draw.io web app and point this at it (for example `http://127.0.0.1:8080/`). The app is ~107 MB and is deliberately not bundled."
+        },
+        "claudeNotes.drawioSketch": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use draw.io's hand-drawn rendering, so a board keeps the whiteboard look."
         }
       }
     }

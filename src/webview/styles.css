@@ -271,6 +271,19 @@ body.vscode-high-contrast-light .tb-btn.active {
 #viewport { transform-origin: 0 0; will-change: transform; }
 #viewport > svg { display: block; }
 
+/* draw.io owns the whole panel when it is the canvas: it brings its own
+   toolbars, rulers and scrolling, so ours get out of the way. */
+#drawio {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: var(--bg);
+}
+body:has(#drawio) #viewbar { display: none; }
+body:has(#drawio) #bar { z-index: 30; }
+
 .board-el { cursor: default; }
 /* In Select mode the board's contents are objects you can pick up. */
 #canvas[data-tool='select'] .board-el.draggable:hover { filter: brightness(1.12); }

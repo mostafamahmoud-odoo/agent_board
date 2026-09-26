@@ -1,0 +1,39 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; frame-src https://embed.diagrams.net; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; font-src 'self' data:; script-src 'nonce-n'">
+<link rel="stylesheet" href="webview.css">
+<style nonce="n">html,body{margin:0;height:100%;background:#1e1e1e}#app{position:relative;height:100%}</style>
+</head>
+<body data-vscode-theme-kind="vscode-dark" class="vscode-dark"
+      data-mermaid-uri="mermaid.min.js"
+      data-drawio-url="https://embed.diagrams.net/" data-drawio-sketch="true">
+<div id="app"></div><pre id="out" style="position:fixed;bottom:0;left:0;color:#8f8;font:11px monospace;z-index:999"></pre>
+<script nonce="n">window.__posted=[];let st;
+window.acquireVsCodeApi=()=>({postMessage:m=>window.__posted.push(m),getState:()=>st,setState:s=>(st=s)});
+window.__v=[];document.addEventListener('securitypolicyviolation',e=>window.__v.push(e.violatedDirective+':'+e.blockedURI));
+// record every message the embed sends us
+window.__embed=[];
+window.addEventListener('message',e=>{
+  try{const d=typeof e.data==='string'?JSON.parse(e.data):e.data;
+      if(d&&d.event){window.__embed.push(d.event); if(d.xml) window.__lastXml=d.xml;}}catch(_){ }
+},true);</script>
+<script type="module" nonce="n" src="webview.js"></script>
+<script nonce="n">
+window.addEventListener('load',()=>setTimeout(()=>{
+  window.dispatchEvent(new MessageEvent('message',{data:{type:'render',generation:1,spec:{
+    title:'drawio canvas', frames:[{id:'f',title:'Group',nodes:['a','b']}],
+    nodes:[{id:'a',label:'alpha'},{id:'b',label:'beta',shape:'diamond'}],
+    edges:[{from:'a',to:'b',label:'link'}]}}}));
+  setTimeout(()=>{
+    window.dispatchEvent(new MessageEvent('message',{data:{type:'setStyle',style:'drawio'}}));
+    setTimeout(()=>{
+      const f=document.getElementById('drawio');
+      document.getElementById('out').textContent =
+        'iframe present: '+(f?'YES':'NO')+
+        '\nsrc: '+(f?f.src.slice(0,70):'-')+
+        '\nviolations: '+(window.__v.join(' | ')||'none')+
+        '\nembed events: '+(window.__embed.join(',')||'NONE — no handshake')+
+        '\niframe loaded: '+(f&&f.contentWindow?'window present':'no contentWindow');
+    },6000);
+  },400);
+},80));
+</script></body></html>

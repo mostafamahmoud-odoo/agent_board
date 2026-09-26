@@ -172,13 +172,16 @@ suite('settings are honoured', () => {
   test('every declared setting has a default and a description', () => {
     const props = vscode.extensions.getExtension(EXT_ID)!.packageJSON.contributes.configuration.properties as Record<
       string,
-      { default?: unknown; description?: string }
+      { default?: unknown; description?: string; markdownDescription?: string }
     >;
     const names = Object.keys(props);
     assert.ok(names.length >= 6, `expected at least 6 settings, got ${names.length}`);
     for (const [k, v] of Object.entries(props)) {
       assert.notStrictEqual(v.default, undefined, `${k} has no default`);
-      assert.ok(v.description && v.description.length > 10, `${k} has no useful description`);
+      // markdownDescription is the equivalent field when the text needs links
+      // or code formatting; either satisfies "the setting explains itself".
+      const text = v.description || v.markdownDescription || '';
+      assert.ok(text.length > 10, `${k} has no useful description`);
     }
   });
 

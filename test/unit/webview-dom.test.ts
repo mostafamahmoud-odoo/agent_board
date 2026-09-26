@@ -413,10 +413,21 @@ describe('render style switching', () => {
     return [...h.doc.querySelectorAll('#menu .menu-item')] as HTMLButtonElement[];
   };
 
-  it('the style menu offers all three styles', () => {
+  it('the style menu offers every style this board can actually be drawn as', () => {
     const items = openStyleMenu();
-    expect(items.map((i) => i.textContent)).toHaveLength(3);
-    expect(items.map((i) => i.textContent).join(' ')).toMatch(/Sketchy.*Clean.*Mermaid/s);
+    const text = items.map((i) => i.textContent).join(' ');
+    expect(text).toMatch(/Sketchy.*Clean.*Mermaid.*draw\.io/s);
+    expect(items).toHaveLength(4);
+  });
+
+  it('does not offer a style the board cannot be drawn as', () => {
+    // An empty board has nothing to derive a mermaid diagram from.
+    h.send({ type: 'render', spec: { title: 'harness board' }, generation: 5 });
+    const labels = (() => {
+      h.btn('Render style').click();
+      return [...h.doc.querySelectorAll('#menu .menu-item')].map((i) => i.textContent || '');
+    })();
+    expect(labels.join(' '), 'Mermaid was offered for a board with nothing in it').not.toMatch(/Mermaid/);
   });
 
   it('choosing a style redraws and tells the host', () => {

@@ -132,8 +132,19 @@ export class NotesPanel {
      * NOTE: a nonce must NOT be added to style-src as well — a nonce makes
      * 'unsafe-inline' be ignored, which would put us straight back.
      */
+    const embed = vscode.workspace.getConfiguration('claudeNotes').get<string>('drawioUrl', '') ||
+      'https://embed.diagrams.net/';
+    const frameOrigin = (() => {
+      try {
+        return new URL(embed).origin;
+      } catch {
+        return 'https://embed.diagrams.net';
+      }
+    })();
+
     const csp = [
       "default-src 'none'",
+      `frame-src ${frameOrigin} ${w.cspSource}`,
       `style-src ${w.cspSource} 'unsafe-inline'`,
       `img-src ${w.cspSource} https: data:`,
       `font-src ${w.cspSource} data:`,
@@ -153,7 +164,9 @@ export class NotesPanel {
       .replace(/{{nonce}}/g, nonce)
       .replace(/{{scriptUri}}/g, uri('dist', 'webview.js'))
       .replace(/{{styleUri}}/g, uri('dist', 'webview.css'))
-      .replace(/{{mermaidUri}}/g, uri('media', 'vendor', 'mermaid.min.js'));
+      .replace(/{{mermaidUri}}/g, uri('media', 'vendor', 'mermaid.min.js'))
+      .replace(/{{drawioUrl}}/g, embed)
+      .replace(/{{drawioSketch}}/g, String(vscode.workspace.getConfiguration('claudeNotes').get<boolean>('drawioSketch', true)));
   }
 }
 

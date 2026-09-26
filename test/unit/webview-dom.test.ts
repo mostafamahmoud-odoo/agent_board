@@ -149,7 +149,10 @@ describe('the toolbar is actually wired to its stylesheet', () => {
           .filter((id) => !/^[0-9a-fA-F]{3,8}$/.test(id))
       )
     ];
-    const missing = ids.filter((id) => !h.doc.getElementById(id));
+    // Elements only present under a particular render style are asserted
+    // where that style is tested, not here.
+    const conditional = new Set(['drawio']);
+    const missing = ids.filter((id) => !conditional.has(id) && !h.doc.getElementById(id));
     expect(missing, `stylesheet targets ids that do not exist: ${missing.join(', ')}`).toEqual([]);
   });
 
@@ -442,6 +445,32 @@ describe('render style switching', () => {
     const svg = h.$('#viewport svg')!;
     // The clean pen emits <rect>; the sketchy pen emits only <path>.
     expect(svg.querySelectorAll('rect').length, 'clean style drew no rects — it is still the sketchy pen').toBeGreaterThan(0);
+  });
+
+  it('a board may ASK for a style, and gets it', async () => {
+    // `style: "drawio"` in the spec used to be ignored — only mermaid was
+    // honoured — so a board asking for it silently rendered as sketchy.
+    h.send({ type: 'render', spec: { ...BOARD, title: 'asks for clean', style: 'clean' }, generation: 7 });
+    await new Promise((r) => setTimeout(r, 40));
+    expect(h.$('#viewport svg')!.querySelectorAll('rect').length, 'the board did not get the style it asked for').toBeGreaterThan(0);
+  });
+
+  it('the toolbar overrides what the board asked for', async () => {
+    h.send({ type: 'render', spec: { ...BOARD, title: 'asks for clean', style: 'clean' }, generation: 8 });
+    await new Promise((r) => setTimeout(r, 40));
+    openStyleMenu()[0].click(); // Sketchy
+    await new Promise((r) => setTimeout(r, 40));
+    h.send({ type: 'render', spec: { ...BOARD, title: 'asks for clean', style: 'clean' }, generation: 9 });
+    await new Promise((r) => setTimeout(r, 40));
+    expect(h.posted.some((m) => m.type === 'styleChanged' && m.style === 'sketchy')).toBe(true);
+  });
+
+  it('asking for the draw.io style mounts the editor', async () => {
+    h.send({ type: 'render', spec: { ...BOARD, title: 'wants drawio', style: 'drawio' }, generation: 11 });
+    await new Promise((r) => setTimeout(r, 60));
+    const f = h.$('#drawio') as HTMLIFrameElement | null;
+    expect(f, 'the draw.io canvas was not mounted').not.toBeNull();
+    expect(f!.src, 'the embed url is wrong').toMatch(/embed=1.*proto=json/);
   });
 
   it('a setStyle message from the host switches the style', async () => {

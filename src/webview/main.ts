@@ -48,6 +48,8 @@ let library: LibraryEntry[] = [];
 let feedback: FeedbackLog = { answers: [], drawings: [], stickies: [] };
 let viewingSaved: string | null = null;
 let forcedReducedMotion = false;
+/** True once the user chooses a style, which then wins over the board's own. */
+let userPickedStyle = false;
 let drawio: DrawioCanvas | null = null;
 /** The user's draw.io edits, kept per board so a redraw does not lose them. */
 let drawioXml: string | null = null;
@@ -235,7 +237,18 @@ async function draw(): Promise<void> {
   marks.setPalette(palette);
   viewport.setReduceMotion(forcedReducedMotion || signals.reduceMotion);
 
-  const effective: RenderStyle = spec.style === 'mermaid' ? 'mermaid' : style;
+  /*
+   * A board may ASK for a style; the toolbar overrides it for the session.
+   * Only mermaid used to be honoured from the spec, so a board declaring
+   * `style: "drawio"` silently rendered as sketchy.
+   */
+  const asked = spec.style;
+  const effective: RenderStyle =
+    asked === 'mermaid'
+      ? 'mermaid' // a mermaid board cannot be drawn any other way
+      : userPickedStyle
+        ? style
+        : (asked ?? style);
 
   inner.replaceChildren();
   focusModel.reset();
@@ -345,6 +358,7 @@ async function draw(): Promise<void> {
   // title must not yank the view the user has set.
   if (spec.title !== lastTitle) {
     lastTitle = spec.title;
+    userPickedStyle = false;
     viewport.fit();
   } else if (saved.viewport && saved.boardTitle === spec.title) {
     viewport.restore(saved.viewport);
@@ -463,6 +477,7 @@ function toggle(panel: HTMLElement, btn: HTMLButtonElement): void {
 
 function setStyle(next: RenderStyle): void {
   style = next;
+  userPickedStyle = true;
   vscode.setState({ ...(vscode.getState() as Persisted), style });
   post({ type: 'styleChanged', style });
   void draw();

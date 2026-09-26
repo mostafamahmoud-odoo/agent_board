@@ -131,6 +131,8 @@ export class Viewport {
 
     this.canvas.addEventListener('pointerdown', (ev) => {
       if (Viewport.onOverlaidUI(ev)) return;
+      // An armed tool owns the drag; panning would fight the pen.
+      if ((this.canvas as HTMLElement).dataset.tool && (this.canvas as HTMLElement).dataset.tool !== 'pan') return;
       if ((ev.target as Element)?.closest?.('.board-el')) return;
       this.dragging = true;
       this.sx = ev.clientX - this.tx;

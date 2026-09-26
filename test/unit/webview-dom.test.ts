@@ -69,8 +69,16 @@ async function boot(): Promise<Harness> {
   // jsdom implements no SVG layout; stub only what the wiring path touches.
   const SVGProto = (w as unknown as { SVGElement: { prototype: Record<string, unknown> } }).SVGElement.prototype;
   SVGProto.getBBox = () => ({ x: 0, y: 0, width: 100, height: 40 });
-  (w.Element.prototype as unknown as Record<string, unknown>).setPointerCapture = () => {};
+  // jsdom has no pointer capture at all. Stub it, and record it, so a test
+  // can assert the pen actually asks for capture — its absence is what let a
+  // stroke die mid-drag in the real browser.
+  (w as unknown as { __captured: unknown[] }).__captured = [];
+  (w.Element.prototype as unknown as Record<string, unknown>).setPointerCapture = function (this: unknown, id: number) {
+    const el = this as { id?: string; tagName?: string };
+    (w as unknown as { __captured: unknown[] }).__captured.push([el.id || el.tagName, id]);
+  };
   (w.Element.prototype as unknown as Record<string, unknown>).releasePointerCapture = () => {};
+  (w.Element.prototype as unknown as Record<string, unknown>).hasPointerCapture = () => true;
   // jsdom has no 2d context; give it a plausible measureText so layout runs.
   (w.HTMLCanvasElement.prototype as unknown as Record<string, unknown>).getContext = function () {
     return { font: '', measureText: (t: string) => ({ width: String(t).length * 7 }) };
@@ -162,13 +170,12 @@ describe('the toolbar is actually wired to its stylesheet', () => {
 });
 
 describe('pen and note toggle', () => {
-  it('Pen sets aria-pressed and enables overlay pointer events', () => {
+  it('Pen reports itself pressed and arms the canvas', () => {
     const pen = h.btn('Pen');
     expect(pen.getAttribute('aria-pressed')).toBe('false');
     pen.click();
     expect(pen.getAttribute('aria-pressed'), 'Pen did not report itself pressed').toBe('true');
-    const overlay = h.$('#overlay') as unknown as SVGElement;
-    expect(overlay.style.pointerEvents, 'the overlay cannot receive the pointer, so drawing is impossible').toBe('auto');
+    expect((h.$('#canvas') as HTMLElement).dataset.tool, 'the canvas is not armed, so nothing can draw').toBe('pen');
   });
 
   it('clicking Pen again returns to pan', () => {
@@ -176,7 +183,7 @@ describe('pen and note toggle', () => {
     pen.click();
     pen.click();
     expect(pen.getAttribute('aria-pressed')).toBe('false');
-    expect((h.$('#overlay') as unknown as SVGElement).style.pointerEvents).toBe('none');
+    expect((h.$('#canvas') as HTMLElement).dataset.tool).toBe('pan');
   });
 
   it('Pen and Note are mutually exclusive', () => {
@@ -196,11 +203,11 @@ describe('pen and note toggle', () => {
     // A drawing tool that disarms on mouse-up means re-clicking Pen before
     // every line. Releasing ends the stroke; it does not put the tool away.
     h.btn('Pen').click();
-    const overlay = h.$('#overlay') as unknown as SVGElement;
+    const surface = h.$('#canvas') as HTMLElement;
     const ev = (type: string, x: number, y: number) => {
       const e = new h.dom.window.Event(type, { bubbles: true }) as unknown as Record<string, unknown>;
-      e.clientX = x; e.clientY = y; e.pointerId = 1;
-      overlay.dispatchEvent(e as unknown as Event);
+      e.clientX = x; e.clientY = y; e.pointerId = 1; e.button = 0;
+      surface.dispatchEvent(e as unknown as Event);
     };
     ev('pointerdown', 10, 10);
     for (let i = 1; i <= 10; i++) ev('pointermove', 10 + i * 5, 10 + i * 3);
@@ -218,11 +225,11 @@ describe('pen and note toggle', () => {
 
   it('nothing is drawn while the mouse is up', () => {
     h.btn('Pen').click();
-    const overlay = h.$('#overlay') as unknown as SVGElement;
+    const surface = h.$('#canvas') as HTMLElement;
     const ev = (type: string, x: number, y: number) => {
       const e = new h.dom.window.Event(type, { bubbles: true }) as unknown as Record<string, unknown>;
-      e.clientX = x; e.clientY = y; e.pointerId = 1;
-      overlay.dispatchEvent(e as unknown as Event);
+      e.clientX = x; e.clientY = y; e.pointerId = 1; e.button = 0;
+      surface.dispatchEvent(e as unknown as Event);
     };
     for (let i = 0; i < 10; i++) ev('pointermove', 30 + i * 8, 30);
     expect(h.posted.some((m) => m.type === 'feedback' && m.kind === 'drawing'), 'moving with the button up drew something').toBe(false);
@@ -236,16 +243,23 @@ describe('pen and note toggle', () => {
     expect(h.btn('Pen').getAttribute('aria-pressed')).toBe('false');
   });
 
-  it('an armed tool can draw in the space around the board, not just on it', () => {
-    // The overlay is only as big as the board; without a catcher a stroke
-    // started beside it would pan instead of draw.
-    expect(h.doc.querySelector('.tool-hit'), 'a catcher exists before any tool is armed').toBeNull();
+  it('the pen takes pointer capture on the CANVAS, not the overlay', () => {
+    // setPointerCapture on the overlay <svg> silently failed in a real
+    // browser, and event delivery was bounded by that svg's own box — so a
+    // stroke died the moment the pointer left the board. Capture must be
+    // taken on the canvas, which always fills the panel.
     h.btn('Pen').click();
-    const hit = h.doc.querySelector('.tool-hit');
-    expect(hit, 'no catcher while the pen is armed').not.toBeNull();
-    expect(hit!.parentElement!.firstElementChild, 'the catcher is above the marks it should sit under').toBe(hit);
+    const surface = h.$('#canvas') as HTMLElement;
+    const e = new h.dom.window.Event('pointerdown', { bubbles: true }) as unknown as Record<string, unknown>;
+    e.clientX = 60; e.clientY = 60; e.pointerId = 7; e.button = 0;
+    surface.dispatchEvent(e as unknown as Event);
+    const captured = (h.dom.window as unknown as { __captured: [string, number][] }).__captured;
+    expect(captured.some(([who, id]) => who === 'canvas' && id === 7), `capture went to: ${JSON.stringify(captured)}`).toBe(true);
+  });
+
+  it('the overlay never takes the pointer itself', () => {
     h.btn('Pen').click();
-    expect(h.doc.querySelector('.tool-hit'), 'the catcher outlived the tool').toBeNull();
+    expect((h.$('#overlay') as unknown as SVGElement).style.pointerEvents).toBe('none');
   });
 
   it('the canvas advertises the armed tool, so the cursor can change', () => {
@@ -258,13 +272,14 @@ describe('pen and note toggle', () => {
 
   it('a drag in pen mode posts a drawing', async () => {
     h.btn('Pen').click();
-    const overlay = h.$('#overlay') as unknown as SVGElement;
+    const surface = h.$('#canvas') as HTMLElement;
     const ev = (type: string, x: number, y: number) => {
       const e = new h.dom.window.Event(type, { bubbles: true }) as unknown as Record<string, unknown>;
       e.clientX = x;
       e.clientY = y;
       e.pointerId = 1;
-      overlay.dispatchEvent(e as unknown as Event);
+      e.button = 0;
+      surface.dispatchEvent(e as unknown as Event);
     };
     ev('pointerdown', 10, 10);
     for (let i = 1; i <= 20; i++) ev('pointermove', 10 + i * 4, 10 + i * 2);
@@ -279,13 +294,13 @@ describe('pen and note toggle', () => {
 
   const pointer = (target: EventTarget, type: string, x: number, y: number) => {
     const e = new h.dom.window.Event(type, { bubbles: true }) as unknown as Record<string, unknown>;
-    e.clientX = x; e.clientY = y; e.pointerId = 1;
+    e.clientX = x; e.clientY = y; e.pointerId = 1; e.button = 0;
     target.dispatchEvent(e as unknown as Event);
   };
 
   const placeNote = (text: string) => {
     h.btn('Sticky note').click();
-    pointer(h.$('#overlay')!, 'pointerdown', 40, 40);
+    pointer(h.$('#canvas')!, 'pointerdown', 40, 40);
     const ta = h.$('.sticky-note') as HTMLTextAreaElement;
     ta.value = text;
     ta.dispatchEvent(new h.dom.window.Event('blur', { bubbles: false }));
@@ -294,7 +309,7 @@ describe('pen and note toggle', () => {
 
   it('a new note is editable, not read-only', () => {
     h.btn('Sticky note').click();
-    pointer(h.$('#overlay')!, 'pointerdown', 40, 40);
+    pointer(h.$('#canvas')!, 'pointerdown', 40, 40);
     const ta = h.$('.sticky-note') as HTMLTextAreaElement;
     expect(ta, 'no sticky was created').not.toBeNull();
     expect(ta.readOnly, 'a brand new note was read-only').toBe(false);
@@ -381,12 +396,13 @@ describe('pen and note toggle', () => {
 
   it('a click in note mode creates an editable sticky', () => {
     h.btn('Sticky note').click();
-    const overlay = h.$('#overlay') as unknown as SVGElement;
+    const surface = h.$('#canvas') as HTMLElement;
     const e = new h.dom.window.Event('pointerdown', { bubbles: true }) as unknown as Record<string, unknown>;
     e.clientX = 40;
     e.clientY = 40;
     e.pointerId = 1;
-    overlay.dispatchEvent(e as unknown as Event);
+    e.button = 0;
+    surface.dispatchEvent(e as unknown as Event);
     expect(h.$('.sticky-note'), 'no sticky textarea was created').not.toBeNull();
   });
 });

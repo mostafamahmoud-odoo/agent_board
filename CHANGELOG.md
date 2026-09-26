@@ -6,6 +6,16 @@ The Marketplace supports only `major.minor.patch` — semver pre-release tags ar
 not valid. Following the documented convention, **even** minor versions are
 releases and **odd** minor versions are pre-releases.
 
+## [0.6.1] — unreleased
+
+### Fixed
+
+- **The pen did not draw.** A stroke began on mouse-down and then died: the
+  drawing surface only listened over the area the board occupied, and the
+  request to keep following the mouse was being refused silently. Drawing now
+  works anywhere in the panel, including strokes that start beside the board
+  or end outside the window.
+
 ## [0.6.0] — unreleased
 
 ### Added

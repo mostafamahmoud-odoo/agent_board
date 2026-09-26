@@ -123,6 +123,7 @@ const drag = new DragController(
 );
 
 marks = new Marks(
+  canvas,
   overlay,
   () => overlayGroup(),
   viewport,

@@ -58,14 +58,19 @@ export class Marks {
   private active: SVGPathElement | null = null;
   /** Set while a note is open, so a state refresh cannot wipe it mid-sentence. */
   private busy = false;
-  /**
-   * A transparent catcher so a tool works in the space AROUND the board too.
-   * The overlay is only as large as the board, and a stroke started just
-   * outside it would otherwise land on the canvas and pan instead of draw.
-   */
-  private hit: SVGRectElement | null = null;
+
 
   constructor(
+    /**
+     * INPUT surface. Deliberately the canvas div, not the overlay: the
+     * overlay is an <svg> sized to the board, and event delivery to an SVG
+     * root is bounded by its own box — so a stroke died the moment the
+     * pointer left it. setPointerCapture on the SVG root also silently
+     * failed, which a try/catch was hiding. The canvas always fills the
+     * panel and captures reliably.
+     */
+    private readonly input: HTMLElement,
+    /** OUTPUT surface, for drawing the marks into. */
     private readonly overlay: SVGSVGElement,
     /** The overlay's transformed group — marks go in here, in BOARD coords. */
     private readonly group: () => SVGGElement,
@@ -111,47 +116,17 @@ export class Marks {
   }
 
   private applyPointerEvents(): void {
-    // In pan mode the overlay must not swallow board gestures, but existing
-    // notes stay interactive because each one re-enables pointer events on
-    // itself.
-    this.overlay.style.pointerEvents = this.mode === 'pan' ? 'none' : 'auto';
-    // The cursor goes on the CANVAS, not the overlay: the overlay is only as
-    // big as the board, so a pen cursor set there would revert to an arrow
-    // over the empty space around it.
-    const canvas = this.overlay.closest('#canvas') as HTMLElement | null;
-    if (canvas) canvas.dataset.tool = this.mode;
-    this.syncHit();
-  }
-
-  private syncHit(): void {
-    const armed = this.mode !== 'pan';
-    if (!armed) {
-      this.hit?.remove();
-      this.hit = null;
-      return;
-    }
-    if (!this.hit) {
-      this.hit = el('rect');
-      this.hit.setAttribute('x', '-20000');
-      this.hit.setAttribute('y', '-20000');
-      this.hit.setAttribute('width', '40000');
-      this.hit.setAttribute('height', '40000');
-      this.hit.setAttribute('fill', 'transparent');
-      this.hit.setAttribute('aria-hidden', 'true');
-      this.hit.setAttribute('class', 'tool-hit');
-    }
-    // First child, so it sits UNDER every existing mark - a note must stay
-    // clickable while the pen is armed.
-    const g = this.group();
-    g.insertBefore(this.hit, g.firstChild);
+    // The overlay never takes the pointer itself; individual marks re-enable
+    // it for themselves so they stay clickable and draggable.
+    this.overlay.style.pointerEvents = 'none';
+    // The armed tool drives both the cursor and whether the board pans.
+    this.input.dataset.tool = this.mode;
   }
 
   /** Draws only the marks belonging to this board. */
   restore(log: FeedbackLog, boardTitle: string | undefined): void {
     if (this.busy) return; // never yank a note out from under someone typing
     this.group().replaceChildren();
-    this.hit = null;
-    this.syncHit();
     const mine = (t: string | undefined) => t == null || t === boardTitle;
     for (const d of log.drawings) {
       if (!mine(d.boardTitle) || !d.points?.length) continue;
@@ -179,16 +154,19 @@ export class Marks {
   }
 
   private attach(): void {
-    this.overlay.addEventListener('pointerdown', (ev) => {
+    this.input.addEventListener('pointerdown', (ev) => {
+      if (this.mode === 'pan') return;
+      if (ev.button !== 0) return;
+      // A mark or a panel under the cursor handles its own click.
+      if ((ev.target as Element | null)?.closest?.('.mark-el, .sticky-fo, .panel, .pill, .menu, .banner')) return;
+      ev.preventDefault();
       if (this.mode === 'pen') {
         const [x, y] = this.viewport.toBoard(ev.clientX, ev.clientY);
         this.stroke = [[x, y]];
         this.active = polyline(this.group(), this.stroke, { stroke: this.palette.pen, strokeWidth: 2.4 });
-        try {
-          this.overlay.setPointerCapture(ev.pointerId);
-        } catch {
-          /* capture is best-effort */
-        }
+        // Capture on the canvas (an HTMLElement) is reliable, and it is what
+        // keeps the stroke alive when the pointer wanders off the board.
+        this.input.setPointerCapture(ev.pointerId);
       } else if (this.mode === 'note') {
         const [x, y] = this.viewport.toBoard(ev.clientX, ev.clientY);
         this.toPan();
@@ -196,7 +174,7 @@ export class Marks {
       }
     });
 
-    this.overlay.addEventListener('pointermove', (ev) => {
+    this.input.addEventListener('pointermove', (ev) => {
       if (this.mode !== 'pen' || !this.active) return;
       const [x, y] = this.viewport.toBoard(ev.clientX, ev.clientY);
       const last = this.stroke[this.stroke.length - 1];
@@ -207,11 +185,7 @@ export class Marks {
 
     const finish = (ev: PointerEvent) => {
       if (!this.active) return;
-      try {
-        this.overlay.releasePointerCapture(ev.pointerId);
-      } catch {
-        /* capture may already be gone */
-      }
+      if (this.input.hasPointerCapture(ev.pointerId)) this.input.releasePointerCapture(ev.pointerId);
       const points = decimate(this.stroke);
       if (points.length >= 2) {
         this.post({ type: 'feedback', kind: 'drawing', payload: { color: this.palette.pen, points } });
@@ -225,8 +199,8 @@ export class Marks {
       // tool - otherwise you would re-click Pen before every line, which is
       // not how a drawing tool behaves anywhere else.
     };
-    this.overlay.addEventListener('pointerup', finish);
-    this.overlay.addEventListener('pointercancel', finish);
+    this.input.addEventListener('pointerup', finish);
+    this.input.addEventListener('pointercancel', finish);
   }
 
   placeSticky(o: { id?: string; x: number; y: number; text: string; editing: boolean }): void {
@@ -409,7 +383,7 @@ export class Marks {
 
   /** Places a note at the centre of the current view — the keyboard path. */
   placeCentreSticky(): void {
-    const r = this.overlay.getBoundingClientRect();
+    const r = this.input.getBoundingClientRect();
     const [x, y] = this.viewport.toBoard(r.left + r.width / 2, r.top + r.height / 2);
     this.toPan();
     this.placeSticky({ x: x - NOTE_W / 2, y: y - 16, text: '', editing: true });
@@ -418,8 +392,6 @@ export class Marks {
   clear(): void {
     this.busy = false;
     this.group().replaceChildren();
-    this.hit = null;
-    this.syncHit();
   }
 }
 

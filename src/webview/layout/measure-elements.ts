@@ -9,6 +9,7 @@ import { KINDS, SHAPES } from '../../shared/types.js';
 import {
   FS_CELL,
   FS_LABEL,
+  FS_SCR,
   FS_SUB,
   LH_LABEL,
   LH_SUB,
@@ -124,6 +125,21 @@ export function measureScreen(s: Screen, m: TextMeasurer): ScreenMeasure {
   if (s.table) {
     tbl = measureTable(s.table, m);
     inner = Math.max(inner, tbl.w);
+  }
+
+  // SKILL.md promises `width` is a minimum that "grows to fit". The old code
+  // grew it for an embedded table but NOT for wide field groups, so a long
+  // label/value pair silently overflowed the form. Measure the widest field
+  // row and honour the promise (T145).
+  for (const gr of s.groups || []) {
+    const cols = gr.columns || 2;
+    let widest = 0;
+    for (const f of gr.fields || []) {
+      const label = m.width(String(f.label ?? ''), FS_SCR);
+      const value = m.width(String(f.value ?? ''), FS_SCR, f.emphasis === true);
+      widest = Math.max(widest, label + value + 24); // 24: gap between label and dotted value
+    }
+    if (widest > 0) inner = Math.max(inner, widest * cols + 14 * (cols - 1));
   }
 
   let h = SCR_PAD;

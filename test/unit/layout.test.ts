@@ -198,3 +198,59 @@ describe('legacy hand-placed geometry still works', () => {
     expect(e.h).toBeGreaterThan(1);
   });
 });
+
+describe('a screen grows to fit its content, as SKILL.md promises (T145)', () => {
+  it('grows for an embedded table wider than `width`', () => {
+    const L = layout(
+      {
+        title: 't',
+        screens: [
+          {
+            id: 's',
+            width: 200,
+            table: {
+              id: 'tb',
+              columns: [{ label: 'a very wide column header indeed' }, { label: 'and another one' }],
+              rows: [['some quite long cell content here', 'and more of it over here too']]
+            }
+          }
+        ]
+      },
+      m
+    );
+    expect(L.elements[0].w).toBeGreaterThan(200);
+  });
+
+  it('ALSO grows for wide field groups — it used not to', () => {
+    const narrow = layout(
+      { title: 't', screens: [{ id: 's', width: 200, groups: [{ fields: [{ label: 'x', value: 'y' }] }] }] },
+      m
+    );
+    const wide = layout(
+      {
+        title: 't',
+        screens: [
+          {
+            id: 's',
+            width: 200,
+            groups: [
+              {
+                fields: [
+                  { label: 'A really quite long field label here', value: 'and a correspondingly long value' }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      m
+    );
+    expect(wide.elements[0].w).toBeGreaterThan(narrow.elements[0].w);
+    expect(wide.elements[0].w).toBeGreaterThan(200);
+  });
+
+  it('treats `width` as a minimum, never a maximum', () => {
+    const L = layout({ title: 't', screens: [{ id: 's', width: 900, groups: [{ fields: [{ label: 'x' }] }] }] }, m);
+    expect(L.elements[0].w).toBeGreaterThanOrEqual(900);
+  });
+});

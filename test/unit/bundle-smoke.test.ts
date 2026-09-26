@@ -57,6 +57,8 @@ function makeVscodeStub(s: Stub) {
       workspaceFolders: undefined,
       isTrusted: true,
       getConfiguration: () => ({ get: (_k: string, d?: unknown) => d, update: () => Promise.resolve() }),
+      onDidChangeConfiguration: emitter(),
+      onDidGrantWorkspaceTrust: emitter(),
       createFileSystemWatcher: () => ({
         onDidChange: emitter(),
         onDidCreate: emitter(),

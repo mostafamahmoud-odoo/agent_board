@@ -39,6 +39,12 @@ annotations the way a person would while talking.
   as thinking-in-progress while you talk, and as a diagram when they share it.
   Set it explicitly only if the board is *only* ever going into a doc or a
   ticket.
+- **drawio**: opens the board in an embedded draw.io editor — the full canvas,
+  for when the user wants to rework a board rather than read it. Our layout
+  still decides where everything starts. Needs internet unless the workspace
+  points `claudeNotes.drawioUrl` at a local copy, and the pen, sticky notes and
+  questions tray are not available there. Ask for it only when editing is the
+  point.
 - **mermaid**: only when you specifically want a formal graph type mermaid does
   well and sketchy does not - sequence diagrams, state machines, ER, gantt,
   large auto-routed dependency graphs.

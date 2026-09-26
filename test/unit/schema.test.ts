@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import fs from 'node:fs';
 import { isLibraryFileName } from '../../src/shared/protocol.js';
+import { RENDER_STYLES } from '../../src/shared/types.js';
 import { parseBoard, validateFatal } from '../../src/shared/schema.js';
 
 describe('fatal tier: the document is unusable (FR-008)', () => {
@@ -85,5 +87,28 @@ describe('LibraryFileName containment (FR-034, SC-009)', () => {
 
   it('rejects non-strings', () => {
     for (const v of [null, undefined, 42, {}, []]) expect(isLibraryFileName(v)).toBe(false);
+  });
+});
+
+describe('the style list cannot drift from the type (regression)', () => {
+  // `drawio` was added to the type, the toolbar and the settings but NOT to
+  // the validator, so a board asking for it was rejected as invalid before it
+  // ever reached the renderer. These tie every copy back to one list.
+  it('the validator accepts every declared render style', () => {
+    for (const style of RENDER_STYLES) {
+      const extra = style === 'mermaid' ? { code: 'flowchart TB\n a-->b' } : {};
+      expect(validateFatal({ title: 't', style, ...extra }), `validator rejected "${style}"`).toEqual([]);
+    }
+  });
+
+  it('the published schema offers exactly the declared styles', () => {
+    const schema = JSON.parse(fs.readFileSync(new URL('../../schemas/board.schema.json', import.meta.url), 'utf8'));
+    expect([...schema.properties.style.enum].sort()).toEqual([...RENDER_STYLES].sort());
+  });
+
+  it('the settings enum offers exactly the declared styles', () => {
+    const manifest = JSON.parse(fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
+    const enumValues = manifest.contributes.configuration.properties['claudeNotes.defaultStyle'].enum;
+    expect([...enumValues].sort()).toEqual([...RENDER_STYLES].sort());
   });
 });

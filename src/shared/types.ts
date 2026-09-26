@@ -18,7 +18,18 @@ export type Shape = 'rect' | 'round' | 'pill' | 'note' | 'ellipse' | 'diamond' |
 
 export const SHAPES: readonly Shape[] = ['rect', 'round', 'pill', 'note', 'ellipse', 'diamond', 'cyl'];
 
-export type RenderStyle = 'sketchy' | 'clean' | 'mermaid' | 'drawio';
+/**
+ * THE source of truth for render styles.
+ *
+ * This list used to exist four times over — the type union, the host
+ * validator, the published JSON schema and SKILL.md — and adding `drawio`
+ * to three of them meant a board asking for it was rejected as invalid
+ * before it ever reached the renderer. The union is derived from this array
+ * so the validator cannot drift from the type again.
+ */
+export const RENDER_STYLES = ['sketchy', 'clean', 'mermaid', 'drawio'] as const;
+
+export type RenderStyle = (typeof RENDER_STYLES)[number];
 
 export type ThemeKind = 'dark' | 'light' | 'high-contrast-dark' | 'high-contrast-light';
 

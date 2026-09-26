@@ -20,10 +20,12 @@
  */
 
 import type { BoardSpec, ValidationIssue, ValidationResult } from './types.js';
+import { RENDER_STYLES } from './types.js';
 
 export { SCHEMA_VERSION } from './types.js';
 
-const KNOWN_STYLES = ['sketchy', 'clean', 'mermaid'] as const;
+/** Derived, never re-typed — see the note on RENDER_STYLES. */
+const KNOWN_STYLES = RENDER_STYLES;
 
 /**
  * The fatal tier. Deliberately hand-written rather than schema-driven: it is

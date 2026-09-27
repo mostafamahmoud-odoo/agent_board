@@ -275,7 +275,10 @@ body.vscode-high-contrast-light .tb-btn.active {
    toolbars, rulers and scrolling, so ours get out of the way. */
 #drawio {
   position: fixed;
-  inset: 0;
+  /* draw.io puts its own toolbar in the top-left, which is exactly where our
+     floating pill sits — the two overlapped and neither was fully usable. The
+     iframe starts below our pill so both toolbars are reachable. */
+  inset: 56px 0 0 0;
   z-index: 20;
   width: 100%;
   height: 100%;
@@ -544,7 +547,7 @@ body.vscode-using-screen-reader #canvas { inset: 0; }
    for these fixed boxes and size them against an empty div. */
 #drawio-status {
   position: fixed;
-  inset: 0;
+  inset: 56px 0 0 0;
   display: flex;
   align-items: center;
   justify-content: center;

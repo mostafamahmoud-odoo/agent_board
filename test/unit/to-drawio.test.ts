@@ -62,11 +62,25 @@ describe('board -> draw.io xml', () => {
   });
 
   it('keeps our layout positions so the board opens looking the same', () => {
+    /*
+     * RELATIVE, not absolute. The board is translated as a whole so nothing
+     * sits at a negative coordinate — draw.io's page origin is 0,0 and cells
+     * placed before it were clipped off the corner. So what has to hold is
+     * that the SHAPE is untouched: every cell moved by the same vector.
+     */
     const L = layout(board, m);
-    const x = xml();
-    const a = L.byId.a;
-    expect(x).toContain(`x="${Math.round(a.x)}"`);
-    expect(x).toContain(`y="${Math.round(a.y)}"`);
+    const doc = parse(xml());
+    const geoOf = (id: string) => {
+      const g = cellById(doc, id).getElementsByTagName('mxGeometry')[0];
+      return { x: Number(g.getAttribute('x')), y: Number(g.getAttribute('y')) };
+    };
+    const a = geoOf('a');
+    const b = geoOf('b');
+    expect(a.x - b.x).toBe(Math.round(L.byId.a.x) - Math.round(L.byId.b.x));
+    expect(a.y - b.y).toBe(Math.round(L.byId.a.y) - Math.round(L.byId.b.y));
+    // and the translation is the one the emitter promises
+    expect(a.x).toBe(Math.round(L.byId.a.x + 40 - L.bounds.minX));
+    expect(a.y).toBe(Math.round(L.byId.a.y + 40 - L.bounds.minY));
   });
 
   it('emits a cell per element plus the frames', () => {
@@ -154,5 +168,77 @@ describe('embed url', () => {
   it('follows the editor theme so the canvas does not fight it', () => {
     expect(resolveEmbedUrl(undefined, true)).toContain('dark=1');
     expect(resolveEmbedUrl(undefined, false)).toContain('dark=0');
+  });
+});
+
+/* Shared with the suite above; a real parser, never tag counting. */
+const _dom = new JSDOM('');
+const parse = (x: string): Document => {
+  const doc = new _dom.window.DOMParser().parseFromString(x, 'application/xml');
+  const err = doc.getElementsByTagName('parsererror')[0];
+  if (err) throw new Error(err.textContent || 'XML parse error');
+  return doc as unknown as Document;
+};
+const cellById = (doc: Document, id: string): Element => {
+  const c = [...doc.querySelectorAll('mxCell')].find((e) => e.getAttribute('id') === id);
+  if (!c) throw new Error(`no cell "${id}" in the emitted xml`);
+  return c;
+};
+
+describe('what the first real board exposed', () => {
+  const bad = (extra: Partial<BoardSpec> = {}): BoardSpec => ({
+    title: 'b',
+    nodes: [
+      { id: 'a', label: 'plain' },
+      { id: 'h', label: 'not built yet', hatch: true }
+    ],
+    annotations: [{ text: 'margin note', at: 'a', place: 'left' }],
+    ...extra
+  });
+
+  const xmlFor = (spec: BoardSpec, sketch = true) =>
+    layoutToDrawio(layout(spec, m), spec.title, p, { sketch });
+
+  it('fills nodes solid, matching SketchyPen — not draw.io hachure', () => {
+    const doc = parse(xmlFor(bad()));
+    const a = cellById(doc, 'a');
+    expect(a.getAttribute('style')).toContain('fillStyle=solid');
+    expect(a.getAttribute('style')).not.toContain('fillStyle=hachure');
+  });
+
+  it('still hatches a node that asked for it', () => {
+    expect(cellById(parse(xmlFor(bad())), 'h').getAttribute('style')).toContain('fillStyle=hachure');
+  });
+
+  it('leaves fillStyle alone when sketch rendering is off', () => {
+    expect(cellById(parse(xmlFor(bad(), false)), 'a').getAttribute('style')).not.toContain('fillStyle');
+  });
+
+  it('translates the board off negative coordinates', () => {
+    // A `place: "left"` annotation lands at a negative x, which put it off
+    // draw.io's page origin and clipped it.
+    const result = layout(bad(), m);
+    expect(result.bounds.minX, 'fixture no longer reproduces the negative origin').toBeLessThan(0);
+
+    const doc = parse(xmlFor(bad()));
+    const geoms = [...doc.getElementsByTagName('mxGeometry')];
+    expect(geoms.length).toBeGreaterThan(0);
+    for (const g of geoms) {
+      const x = g.getAttribute('x');
+      const y = g.getAttribute('y');
+      if (x !== null) expect(Number(x), `a cell sits at x=${x}`).toBeGreaterThanOrEqual(0);
+      if (y !== null) expect(Number(y), `a cell sits at y=${y}`).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it('keeps the board rigid — every cell shifts by the same amount', () => {
+    const shifted = parse(xmlFor(bad()));
+    const result = layout(bad(), m);
+    const node = result.elements.find((e) => e.id === 'a')!;
+    const geo = cellById(shifted, 'a').getElementsByTagName('mxGeometry')[0];
+    const dx = Number(geo.getAttribute('x')) - Math.round(node.x);
+    const dy = Number(geo.getAttribute('y')) - Math.round(node.y);
+    expect(dx).toBe(Math.round(40 - result.bounds.minX));
+    expect(dy).toBe(Math.round(40 - result.bounds.minY));
   });
 });

@@ -92,7 +92,7 @@ const SHAPE: Record<string, Record<string, string | number>> = {
   note: { shape: 'note', size: 14 }
 };
 
-function nodeCell(e: PlacedElement, p: Palette, sketch: boolean): string {
+function nodeCell(o: Origin, e: PlacedElement, p: Palette, sketch: boolean): string {
   const spec = e.type === 'node' ? (e.spec as BoardNode) : undefined;
   const c = colours(p, e.type === 'node' ? e.kind : e.kind);
   const shape = e.type === 'node' ? SHAPE[e.shape] ?? SHAPE.rect : SHAPE.rect;
@@ -114,6 +114,17 @@ function nodeCell(e: PlacedElement, p: Palette, sketch: boolean): string {
     whiteSpace: 'wrap',
     html: 1,
     ...c,
+    /*
+     * FILL STYLE IS NOT OPTIONAL HERE.
+     *
+     * draw.io's sketch mode defaults to rough.js hachure, so every node came
+     * back scribbled over in diagonal lines with its label unreadable
+     * underneath. Our own SketchyPen sets `fillStyle = 'solid'` unless the
+     * node asks for `hatch` (pen.ts) — this is the same rule, so the two
+     * renderers agree instead of one of them deciding to shade everything.
+     */
+    fillStyle: sketch ? (spec?.hatch === true ? 'hachure' : 'solid') : undefined,
+    fontSize: 12,
     strokeWidth: spec?.emphasis ? 3 : 1.5,
     fontStyle: spec?.emphasis ? 1 : undefined,
     dashed: e.type === 'node' && kindOf(p, e.kind).dash ? 1 : undefined,
@@ -125,7 +136,7 @@ function nodeCell(e: PlacedElement, p: Palette, sketch: boolean): string {
     align: 'center'
   });
 
-  return cell(e.id, label, style, e.x, e.y, e.w, e.h);
+  return cell(o, e.id, label, style, e.x, e.y, e.w, e.h);
 }
 
 /**
@@ -173,7 +184,27 @@ function screenLabel(s: PlacedScreen): string {
   return asValue(parts.join('') || t(s.id));
 }
 
+/**
+ * THE ORIGIN SHIFT.
+ *
+ * Our layout is free to use negative coordinates — a `place: "left"`
+ * annotation beside the leftmost frame lands at a negative x, and that is
+ * normal for an SVG we pan ourselves. draw.io's page origin is 0,0 and it
+ * opens near it, so those cells sat off the top-left corner: the margin notes
+ * were clipped and the board looked shoved off the canvas.
+ *
+ * So every cell is emitted through this, which translates the whole board to
+ * start at MARGIN,MARGIN. Nothing else needs to know about it.
+ */
+const MARGIN = 40;
+
+interface Origin {
+  dx: number;
+  dy: number;
+}
+
 function cell(
+  o: Origin,
   id: string,
   value: string,
   style: string,
@@ -185,7 +216,8 @@ function cell(
 ): string {
   return (
     `<mxCell id="${esc(id)}" value="${value}" style="${esc(style)}" vertex="1" parent="${parent}">` +
-    `<mxGeometry x="${Math.round(x)}" y="${Math.round(y)}" width="${Math.round(w)}" height="${Math.round(h)}" as="geometry"/>` +
+    `<mxGeometry x="${Math.round(x + o.dx)}" y="${Math.round(y + o.dy)}" ` +
+    `width="${Math.round(w)}" height="${Math.round(h)}" as="geometry"/>` +
     `</mxCell>`
   );
 }
@@ -202,6 +234,8 @@ export function layoutToDrawio(
   opts: DrawioOptions = {}
 ): string {
   const sketch = opts.sketch !== false;
+  const { minX, minY, maxX, maxY } = layout.bounds;
+  const o: Origin = { dx: MARGIN - minX, dy: MARGIN - minY };
   const cells: string[] = ['<mxCell id="0"/>', '<mxCell id="1" parent="0"/>'];
 
   // Frames first so they sit behind their contents.
@@ -212,6 +246,7 @@ export function layoutToDrawio(
       whiteSpace: 'wrap',
       html: 1,
       fillColor: 'none',
+      fillStyle: sketch ? 'solid' : undefined,
       strokeColor: toHex(p.frameStroke),
       dashed: 1,
       dashPattern: '8 6',
@@ -230,10 +265,10 @@ export function layoutToDrawio(
       collapsible: 0,
       childLayout: 'none'
     });
-    cells.push(cell(`frame_${f.id}`, htmlLabel(f.title ?? ''), style, f.x, f.y, f.w, f.h));
+    cells.push(cell(o, `frame_${f.id}`, htmlLabel(f.title ?? ''), style, f.x, f.y, f.w, f.h));
   }
 
-  for (const e of layout.elements) cells.push(nodeCell(e, p, sketch));
+  for (const e of layout.elements) cells.push(nodeCell(o, e, p, sketch));
 
   for (const e of layout.edges) {
     const kc = kindOf(p, e.kind);
@@ -276,10 +311,11 @@ export function layoutToDrawio(
     });
     const w = Math.max(60, a.textW + 10);
     const x = a.anchor === 'end' ? a.x - w : a.anchor === 'middle' ? a.x - w / 2 : a.x;
-    cells.push(cell(`note_${i}`, htmlLabel(a.spec.text), style, x, a.y - a.size, w, a.lines.length * (a.size + 4) + 6));
+    cells.push(
+      cell(o, `note_${i}`, htmlLabel(a.spec.text), style, x, a.y - a.size, w, a.lines.length * (a.size + 4) + 6)
+    );
   });
 
-  const { minX, minY, maxX, maxY } = layout.bounds;
   const model =
     `<mxGraphModel dx="${Math.round(maxX - minX)}" dy="${Math.round(maxY - minY)}" grid="1" gridSize="10" ` +
     `guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" math="0" shadow="0">` +

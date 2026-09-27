@@ -2,7 +2,7 @@
   "name": "claude-notes-panel",
   "displayName": "Claude Notes Panel",
   "description": "Renders Claude's planning notes as a hand-drawn whiteboard (frames, sticky notes, margin annotations) or a mermaid diagram in a side panel, with pan/zoom and fit-to-panel.",
-  "version": "0.8.3",
+  "version": "0.8.4",
   "license": "MIT",
   "publisher": "local",
   "engines": {

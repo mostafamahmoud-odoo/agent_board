@@ -1,5 +1,5 @@
 import type { BoardNode, Cell, Kind } from '../../shared/types.js';
-import type { LayoutResult, PlacedElement, PlacedScreen, PlacedTable } from '../layout/types.js';
+import type { LayoutResult, PlacedElement, PlacedFrame, PlacedScreen, PlacedTable } from '../layout/types.js';
 import { cellText } from '../layout/measure-elements.js';
 import { kindOf, type Palette } from '../theme/palette.js';
 
@@ -92,7 +92,7 @@ const SHAPE: Record<string, Record<string, string | number>> = {
   note: { shape: 'note', size: 14 }
 };
 
-function nodeCell(o: Origin, e: PlacedElement, p: Palette, sketch: boolean): string {
+function nodeCell(o: Origin, e: PlacedElement, p: Palette, sketch: boolean, parent = '1'): string {
   const spec = e.type === 'node' ? (e.spec as BoardNode) : undefined;
   const c = colours(p, e.type === 'node' ? e.kind : e.kind);
   const shape = e.type === 'node' ? SHAPE[e.shape] ?? SHAPE.rect : SHAPE.rect;
@@ -136,7 +136,37 @@ function nodeCell(o: Origin, e: PlacedElement, p: Palette, sketch: boolean): str
     align: 'center'
   });
 
-  return cell(o, e.id, label, style, e.x, e.y, e.w, e.h);
+  return cell(o, e.id, label, style, e.x, e.y, e.w, e.h, parent);
+}
+
+/**
+ * The little corner chip (`badge: "step 1"`). The sketchy renderer has always
+ * drawn it (paint.ts) and the emitter dropped it, so a board lost its step
+ * numbers and its "bug" / "new" markers the moment it opened in draw.io.
+ */
+function badgeCell(o: Origin, e: PlacedElement, p: Palette, sketch: boolean, parent: string): string | null {
+  const spec = e.type === 'node' ? (e.spec as BoardNode) : undefined;
+  if (!spec?.badge) return null;
+  const text = String(spec.badge);
+  const w = text.length * 9 * 0.62 + 12;
+  const k = kindOf(p, e.kind);
+  const style = styleOf({
+    rounded: 1,
+    arcSize: 50,
+    whiteSpace: 'wrap',
+    html: 1,
+    fillColor: toHex(p.chip),
+    fillStyle: sketch ? 'solid' : undefined,
+    strokeColor: toHex(k.s),
+    fontColor: toHex(k.s),
+    fontSize: 9,
+    strokeWidth: 1,
+    sketch: sketch ? 1 : undefined,
+    jiggle: sketch ? 2 : undefined,
+    verticalAlign: 'middle',
+    align: 'center'
+  });
+  return cell(o, `badge_${e.id}`, htmlLabel(text), style, e.x + e.w - w - 6, e.y - 10, w, 18, parent);
 }
 
 /**
@@ -238,6 +268,18 @@ export function layoutToDrawio(
   const o: Origin = { dx: MARGIN - minX, dy: MARGIN - minY };
   const cells: string[] = ['<mxCell id="0"/>', '<mxCell id="1" parent="0"/>'];
 
+  /*
+   * WHICH FRAME OWNS WHICH ELEMENT.
+   *
+   * The frame cells were emitted with `container=1` and a comment claiming
+   * dragging a frame takes its contents along — but every element was
+   * emitted with parent="1", so it did nothing. Moving a frame left its
+   * nodes behind. Elements are now real children of their frame, with
+   * geometry relative to it, which is what mxGraph containment means.
+   */
+  const ownerOf = new Map<string, PlacedFrame>();
+  for (const f of layout.frames) for (const id of f.ids) ownerOf.set(id, f);
+
   // Frames first so they sit behind their contents.
   for (const f of layout.frames) {
     const style = styleOf({
@@ -268,7 +310,15 @@ export function layoutToDrawio(
     cells.push(cell(o, `frame_${f.id}`, htmlLabel(f.title ?? ''), style, f.x, f.y, f.w, f.h));
   }
 
-  for (const e of layout.elements) cells.push(nodeCell(o, e, p, sketch));
+  for (const e of layout.elements) {
+    const owner = ownerOf.get(e.id);
+    // A child's geometry is relative to its parent, so the origin shift is
+    // already carried by the frame and must not be applied twice.
+    const eo: Origin = owner ? { dx: -owner.x, dy: -owner.y } : o;
+    cells.push(nodeCell(eo, e, p, sketch, owner ? `frame_${owner.id}` : '1'));
+    const badge = badgeCell(eo, e, p, sketch, owner ? `frame_${owner.id}` : '1');
+    if (badge) cells.push(badge);
+  }
 
   for (const e of layout.edges) {
     const kc = kindOf(p, e.kind);
@@ -314,7 +364,64 @@ export function layoutToDrawio(
     cells.push(
       cell(o, `note_${i}`, htmlLabel(a.spec.text), style, x, a.y - a.size, w, a.lines.length * (a.size + 4) + 6)
     );
+
+    // `underline: true` is a whiteboard gesture the sketchy renderer draws as
+    // a wobbly rule under the text; here it is a hairline of the same colour.
+    if (a.spec.underline) {
+      const y2 = a.y + (a.lines.length - 1) * (a.size + 4) + 5;
+      const x0 = a.anchor === 'end' ? a.x - a.textW : a.anchor === 'middle' ? a.x - a.textW / 2 : a.x;
+      const rule = styleOf({
+        line: '',
+        strokeWidth: 1.2,
+        strokeColor: colour,
+        sketch: sketch ? 1 : undefined,
+        jiggle: sketch ? 2 : undefined
+      });
+      cells.push(cell(o, `note_${i}_rule`, '', rule, x0, y2, Math.max(8, a.textW), 1));
+    }
   });
+
+  /*
+   * THE LEGEND. Laid out, measured, counted in bounds — and then silently
+   * dropped by this emitter, so a board that explained its own colours in
+   * sketchy opened in draw.io with the colours unexplained. Same geometry the
+   * sketchy renderer uses (paint.ts), so the two agree.
+   */
+  if (layout.legend) {
+    let lx = layout.legend.x;
+    const ly = layout.legend.y;
+    layout.legend.entries.forEach((item, i) => {
+      const k = kindOf(p, item.kind);
+      const swatch = styleOf({
+        rounded: 0,
+        html: 1,
+        fillColor: k.f === 'transparent' ? 'none' : toHex(k.f),
+        fillStyle: sketch ? 'solid' : undefined,
+        strokeColor: toHex(k.s),
+        strokeWidth: 1.1,
+        dashed: k.dash ? 1 : undefined,
+        dashPattern: k.dash ? k.dash.join(' ') : undefined,
+        sketch: sketch ? 1 : undefined,
+        jiggle: sketch ? 2 : undefined
+      });
+      cells.push(cell(o, `legend_sw_${i}`, '', swatch, lx, ly - 10, 18, 12));
+
+      const labelW = item.label.length * 12 * 0.55;
+      const text = styleOf({
+        text: '',
+        html: 1,
+        whiteSpace: 'wrap',
+        fontSize: 12,
+        fontColor: toHex(p.muted),
+        align: 'left',
+        verticalAlign: 'middle',
+        strokeColor: 'none',
+        fillColor: 'none'
+      });
+      cells.push(cell(o, `legend_tx_${i}`, htmlLabel(item.label), text, lx + 24, ly - 12, labelW + 8, 16));
+      lx += 24 + labelW + 22;
+    });
+  }
 
   const model =
     `<mxGraphModel dx="${Math.round(maxX - minX)}" dy="${Math.round(maxY - minY)}" grid="1" gridSize="10" ` +

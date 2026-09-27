@@ -186,9 +186,15 @@ suite('settings are honoured', () => {
   });
 
   test('reading a setting returns its declared default', () => {
+    // Read the declared defaults from the manifest rather than restating
+    // them: the hardcoded copy asserted 'sketchy' and simply broke when the
+    // default changed, which tested the old value, not the claim.
     const cfg = vscode.workspace.getConfiguration('claudeNotes');
-    assert.strictEqual(cfg.get('defaultStyle'), 'sketchy');
-    assert.strictEqual(cfg.get('notifyOnFeedback'), true);
-    assert.strictEqual(cfg.get('feedback.maxEntries'), 500);
+    const declared = vscode.extensions.getExtension(EXT_ID)!.packageJSON.contributes.configuration
+      .properties as Record<string, { default: unknown }>;
+    for (const [key, prop] of Object.entries(declared)) {
+      const short = key.replace(/^claudeNotes\./, '');
+      assert.deepStrictEqual(cfg.get(short), prop.default, `${key} does not read back its declared default`);
+    }
   });
 });

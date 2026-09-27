@@ -1,8 +1,8 @@
 {
   "name": "claude-notes-panel",
   "displayName": "Claude Notes Panel",
-  "description": "Renders Claude's planning notes as a hand-drawn whiteboard (frames, sticky notes, margin annotations) or a mermaid diagram in a side panel, with pan/zoom and fit-to-panel.",
-  "version": "0.8.4",
+  "description": "Renders Claude's planning notes as an editable board: an embedded draw.io canvas by default, or a hand-drawn whiteboard (frames, sticky notes, margin annotations) or a mermaid diagram in a side panel, with pan/zoom and fit-to-panel.",
+  "version": "0.9.0",
   "license": "MIT",
   "publisher": "local",
   "engines": {
@@ -117,19 +117,19 @@
         "claudeNotes.defaultStyle": {
           "type": "string",
           "enum": [
+            "drawio",
             "sketchy",
             "clean",
-            "mermaid",
-            "drawio"
+            "mermaid"
           ],
-          "default": "sketchy",
+          "default": "drawio",
           "enumDescriptions": [
-            "Hand-drawn whiteboard",
+            "draw.io \u2014 a full editing canvas (needs internet, or claudeNotes.drawioUrl)",
+            "Hand-drawn whiteboard, rendered in the panel",
             "Precise SVG, for sharing",
-            "Formal graph types",
-            "draw.io \u2014 a full editing canvas"
+            "Formal graph types"
           ],
-          "description": "Render style used when a board does not declare one."
+          "markdownDescription": "Render style used when a board does not declare one. `drawio` is the default: it is a real editing canvas, so a board can be reworked rather than only read. It loads from the internet unless `claudeNotes.drawioUrl` points at a local copy \u2014 set this to `sketchy` to stay entirely offline."
         },
         "claudeNotes.openOnStartup": {
           "type": "boolean",

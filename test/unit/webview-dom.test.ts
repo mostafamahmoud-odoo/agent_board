@@ -55,7 +55,13 @@ async function boot(): Promise<Harness> {
   const w = dom.window as unknown as Window & typeof globalThis & Record<string, unknown>;
 
   const posted: Record<string, unknown>[] = [];
-  let state: unknown = undefined;
+  /*
+   * These tests drive the SVG canvas — the pen, sticky notes, dragging
+   * elements — so the harness starts on the sketchy style, as a user who last
+   * chose it would. The panel default is draw.io, which is a remote iframe
+   * with none of those tools, and booting there failed all 15 at once.
+   */
+  let state: unknown = { style: 'sketchy' };
   w.acquireVsCodeApi = () =>
     ({
       postMessage: (m: Record<string, unknown>) => posted.push(m),

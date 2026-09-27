@@ -6,7 +6,11 @@
 <div id="app"></div><pre id="out" style="position:fixed;bottom:0;left:0;color:#8f8;font:12px monospace;z-index:99"></pre>
 <script nonce="n">
   window.__posted = [];
-  let st; window.acquireVsCodeApi = () => ({ postMessage: m => window.__posted.push(m), getState: () => st, setState: s => (st = s) });
+  // These probes exercise the SVG canvas, so the harness starts on sketchy
+  // the way a user who last chose it would. The panel default is draw.io — a
+  // remote iframe with no pen, notes or selection — and landing there made
+  // every check fail at once.
+  let st = { style: 'sketchy' }; window.acquireVsCodeApi = () => ({ postMessage: m => window.__posted.push(m), getState: () => st, setState: s => (st = s) });
 </script>
 <script type="module" nonce="n" src="webview.js"></script>
 <script nonce="n">

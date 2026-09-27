@@ -78,9 +78,13 @@ describe('board -> draw.io xml', () => {
     const b = geoOf('b');
     expect(a.x - b.x).toBe(Math.round(L.byId.a.x) - Math.round(L.byId.b.x));
     expect(a.y - b.y).toBe(Math.round(L.byId.a.y) - Math.round(L.byId.b.y));
-    // and the translation is the one the emitter promises
-    expect(a.x).toBe(Math.round(L.byId.a.x + 40 - L.bounds.minX));
-    expect(a.y).toBe(Math.round(L.byId.a.y + 40 - L.bounds.minY));
+
+    // `a` and `b` live in a frame, so their geometry is relative to it and the
+    // origin shift is carried once, by the frame.
+    const f = L.frames[0];
+    expect(a.x).toBe(Math.round(L.byId.a.x - f.x));
+    const fg = cellById(doc, `frame_${f.id}`).getElementsByTagName('mxGeometry')[0];
+    expect(Number(fg.getAttribute('x'))).toBe(Math.round(f.x + 40 - L.bounds.minX));
   });
 
   it('emits a cell per element plus the frames', () => {
@@ -221,7 +225,12 @@ describe('what the first real board exposed', () => {
     expect(result.bounds.minX, 'fixture no longer reproduces the negative origin').toBeLessThan(0);
 
     const doc = parse(xmlFor(bad()));
-    const geoms = [...doc.getElementsByTagName('mxGeometry')];
+    // Only top-level cells are in page coordinates; a frame's children are
+    // relative to it and may legitimately be negative-adjacent (a badge sits
+    // above its node's top edge).
+    const geoms = [...doc.querySelectorAll('mxCell')]
+      .filter((c) => c.getAttribute('parent') === '1')
+      .flatMap((c) => [...c.getElementsByTagName('mxGeometry')]);
     expect(geoms.length).toBeGreaterThan(0);
     for (const g of geoms) {
       const x = g.getAttribute('x');
@@ -234,11 +243,69 @@ describe('what the first real board exposed', () => {
   it('keeps the board rigid — every cell shifts by the same amount', () => {
     const shifted = parse(xmlFor(bad()));
     const result = layout(bad(), m);
+    // `bad()` has no frames, so its nodes are top-level and carry the shift.
     const node = result.elements.find((e) => e.id === 'a')!;
     const geo = cellById(shifted, 'a').getElementsByTagName('mxGeometry')[0];
     const dx = Number(geo.getAttribute('x')) - Math.round(node.x);
     const dy = Number(geo.getAttribute('y')) - Math.round(node.y);
     expect(dx).toBe(Math.round(40 - result.bounds.minX));
     expect(dy).toBe(Math.round(40 - result.bounds.minY));
+  });
+});
+
+describe('what the emitter used to drop on the floor', () => {
+  const rich: BoardSpec = {
+    title: 'rich',
+    frames: [{ id: 'f', title: 'Frame', nodes: ['n1', 'n2'] }],
+    nodes: [
+      { id: 'n1', label: 'first', badge: 'step 1', kind: 'problem' },
+      { id: 'n2', label: 'second' }
+    ],
+    annotations: [{ text: 'underlined', at: 'n1', place: 'right', underline: true }],
+    legend: [
+      { kind: 'problem', label: 'broken today' },
+      { kind: 'fix', label: 'proposed' }
+    ]
+  };
+  const doc = () => parse(layoutToDrawio(layout(rich, m), rich.title, p));
+
+  it('draws the legend, which was laid out and then discarded', () => {
+    const d = doc();
+    const values = [...d.querySelectorAll('mxCell')].map((c) => c.getAttribute('value') || '').join(' ');
+    expect(values).toContain('broken today');
+    expect(values).toContain('proposed');
+    // a swatch per entry, coloured by kind
+    expect(cellById(d, 'legend_sw_0').getAttribute('style')).toContain('strokeColor=');
+    expect(cellById(d, 'legend_sw_1')).toBeTruthy();
+  });
+
+  it('draws a node badge', () => {
+    expect(cellById(doc(), 'badge_n1').getAttribute('value')).toContain('step 1');
+  });
+
+  it('omits the badge cell for a node without one', () => {
+    expect(() => cellById(doc(), 'badge_n2')).toThrow();
+  });
+
+  it('draws the underline an annotation asked for', () => {
+    expect(cellById(doc(), 'note_0_rule').getAttribute('style')).toContain('line');
+  });
+
+  it('makes elements real children of their frame, so moving it moves them', () => {
+    // The frame cell carried container=1 and a comment promising this, while
+    // every element was emitted with parent="1" — so it did nothing.
+    const d = doc();
+    expect(cellById(d, 'n1').getAttribute('parent')).toBe('frame_f');
+    expect(cellById(d, 'n2').getAttribute('parent')).toBe('frame_f');
+    expect(cellById(d, 'badge_n1').getAttribute('parent')).toBe('frame_f');
+  });
+
+  it('makes a child geometry relative to its frame, not doubly shifted', () => {
+    const L = layout(rich, m);
+    const d = doc();
+    const g = cellById(d, 'n1').getElementsByTagName('mxGeometry')[0];
+    const f = L.frames[0];
+    expect(Number(g.getAttribute('x'))).toBe(Math.round(L.byId.n1.x - f.x));
+    expect(Number(g.getAttribute('y'))).toBe(Math.round(L.byId.n1.y - f.y));
   });
 });

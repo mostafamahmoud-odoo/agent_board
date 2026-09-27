@@ -30,21 +30,27 @@ annotations the way a person would while talking.
 - Precise technical specs that need to be copy-pasted (e.g. exact commands)
 
 ## Choosing a style
-- **sketchy** (default, preferred): the whiteboard. Auto-layout, frames,
-  shapes, sticky notes, margin annotations, legend. Use for almost everything -
-  it reads as thinking-in-progress, which is what a discussion answer is.
-- **clean**: the same board, same layout, precise strokes instead of hand-drawn
-  wobble. You rarely need to ask for this: the user can switch any sketchy
-  board to clean from the panel toolbar, which is the point - the board reads
-  as thinking-in-progress while you talk, and as a diagram when they share it.
-  Set it explicitly only if the board is *only* ever going into a doc or a
-  ticket.
-- **drawio**: opens the board in an embedded draw.io editor — the full canvas,
-  for when the user wants to rework a board rather than read it. Our layout
-  still decides where everything starts. Needs internet unless the workspace
-  points `claudeNotes.drawioUrl` at a local copy, and the pen, sticky notes and
-  questions tray are not available there. Ask for it only when editing is the
-  point.
+
+**You usually do not need to choose.** The panel has a default (draw.io, and
+the user can change it), and it is applied to any board that does not name a
+style. Every board is the same spec: frames, nodes, edges, annotations — the
+style only decides what draws it. So write the board and leave `style` out
+unless one of these applies.
+
+- **drawio** (the panel default): the board opens in an embedded draw.io
+  editor, so the user can move, restyle and connect things rather than only
+  read them. Our layout still decides where everything starts. It loads from
+  the internet unless the workspace points `claudeNotes.drawioUrl` at a local
+  copy, and the pen, sticky notes and questions tray do not exist there — so
+  if you are **asking a question on the board**, name `sketchy` explicitly.
+- **sketchy**: the whiteboard, rendered in the panel itself. Hand-drawn
+  wobble, sticky notes, margin annotations, legend, and the pen/notes/questions
+  tools. Name it when you want the answer to read as thinking-in-progress, and
+  whenever the board carries a `questions` array.
+- **clean**: the same board, same layout, precise strokes instead of
+  hand-drawn wobble. You rarely need to ask for this: the user can switch any
+  board to clean from the panel toolbar. Set it explicitly only if the board
+  is *only* ever going into a doc or a ticket.
 - **mermaid**: only when you specifically want a formal graph type mermaid does
   well and sketchy does not - sequence diagrams, state machines, ER, gantt,
   large auto-routed dependency graphs.

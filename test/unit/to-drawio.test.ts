@@ -319,3 +319,56 @@ describe('what the emitter used to drop on the floor', () => {
     expect(Number(g.getAttribute('y'))).toBe(Math.round(L.byId.n1.y - f.y));
   });
 });
+
+describe('fields the sketchy renderer honours and the emitter ignored', () => {
+  /*
+   * Audited field by field against paint.ts. Each of these was drawn on the
+   * sketchy canvas and silently thrown away here, so the same board looked
+   * poorer the moment it opened in draw.io.
+   */
+  const custom: BoardSpec = {
+    title: 'overrides',
+    frames: [{ id: 'f', title: 'Tinted', nodes: ['n'], color: '#ff8800', titleColor: '#00ccff' }],
+    nodes: [{ id: 'n', label: 'custom', color: '#ff0000', fill: '#001122', textColor: '#00ff00' }],
+    annotations: [
+      { text: 'tilted', x: 10, y: 10, rotate: -8 },
+      { text: 'points at it', at: 'n', place: 'right', arrowTo: 'n' }
+    ]
+  };
+  const doc = () => parse(layoutToDrawio(layout(custom, m), custom.title, p));
+
+  it("uses a node's own stroke, fill and text colours", () => {
+    const style = cellById(doc(), 'n').getAttribute('style')!;
+    expect(style).toContain('strokeColor=#ff0000');
+    expect(style).toContain('fillColor=#001122');
+    expect(style).toContain('fontColor=#00ff00');
+  });
+
+  it("uses a frame's own colour and title colour", () => {
+    const style = cellById(doc(), 'frame_f').getAttribute('style')!;
+    expect(style).toContain('strokeColor=#ff8800');
+    expect(style).toContain('fontColor=#00ccff');
+  });
+
+  it('keeps an annotation tilted', () => {
+    expect(cellById(doc(), 'note_0').getAttribute('style')).toContain('rotation=-8');
+  });
+
+  it('draws the pointer from a margin note to what it is about', () => {
+    const arrow = cellById(doc(), 'note_1_arrow');
+    expect(arrow.getAttribute('edge')).toBe('1');
+    expect(arrow.getAttribute('source')).toBe('note_1');
+    expect(arrow.getAttribute('target')).toBe('n');
+    expect(arrow.getAttribute('style')).toContain('dashed=1');
+  });
+
+  it('does not invent a pointer to a node that does not exist', () => {
+    const dangling: BoardSpec = {
+      title: 'x',
+      nodes: [{ id: 'n', label: 'n' }],
+      annotations: [{ text: 'lost', at: 'n', arrowTo: 'ghost' }]
+    };
+    const d = parse(layoutToDrawio(layout(dangling, m), dangling.title, p));
+    expect(() => cellById(d, 'note_0_arrow')).toThrow();
+  });
+});

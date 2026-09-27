@@ -92,3 +92,31 @@ describe('schema <-> SKILL.md reconciliation (FR-020)', () => {
     }
   });
 });
+
+describe('SKILL.md documents how the draw.io canvas differs (FR-020)', () => {
+  /*
+   * SKILL.md is the prompt that generates the board, so a difference the
+   * canvas has and the skill does not mention is a board Claude will write
+   * wrong. These pin the three that change what gets authored, each against
+   * the code that makes them true.
+   */
+  const main = fs.readFileSync(path.join(root, 'src/webview/main.ts'), 'utf8');
+  const drawio = fs.readFileSync(path.join(root, 'src/webview/render/to-drawio.ts'), 'utf8');
+
+  it('says a board with questions must ask for sketchy', () => {
+    // The canvas replaces the whole panel body, so the questions tray is not
+    // reachable while it is up.
+    expect(main).toContain("effective === 'drawio'");
+    expect(skill.toLowerCase()).toMatch(/questions[\s\S]{0,200}sketchy|sketchy[\s\S]{0,200}questions/);
+  });
+
+  it('warns that a user edit freezes the board against later writes', () => {
+    expect(main).toContain('drawioForTitle === spec.title');
+    expect(skill).toMatch(/freeze|frozen|ignored|reopens/i);
+  });
+
+  it('says hatch fades rather than hatches on this canvas', () => {
+    expect(drawio).toContain("opacity: spec?.hatch === true ? 55 : undefined");
+    expect(skill).toMatch(/hatch[\s\S]{0,160}(fade|opacity)/i);
+  });
+});

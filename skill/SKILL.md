@@ -249,6 +249,80 @@ record and colours its text; a cell `kind` overrides it for one cell.
 
 ---
 
+## The draw.io canvas (the default style)
+
+There is **one board spec**. `drawio` does not change what you write — frames,
+nodes, edges, annotations, legend, tables and screens are all the same fields.
+It changes what draws them: our layout decides where everything starts, then
+hands the board to an embedded draw.io editor the user can actually work in.
+
+So: write the board the way you always would. This section is only the
+handful of places where the canvas behaves differently from the SVG one.
+
+### What the canvas gives you that sketchy cannot
+
+- **Everything is editable.** Nodes move, resize, restyle and reconnect. The
+  user can add boxes you never drew.
+- **Frames are real containers.** Every node you put in a frame becomes its
+  child, so dragging the frame takes the group with it. This is a reason to
+  put *every* node in a frame, not just most of them.
+- **`arrowTo` becomes a live connector.** A margin note that points at a node
+  stays attached to it when either end is dragged. On the SVG canvas it is a
+  drawn line that goes stale.
+- **Edges are routed by draw.io**, so they re-route as things move.
+
+### What it does not have
+
+- **No pen, no sticky notes, no questions tray.** Those are panel tools and
+  the canvas is a separate document. **If your board carries a `questions`
+  array, set `"style": "sketchy"`** — otherwise you have asked a question the
+  user has no way to answer in the panel.
+- **No `code` / mermaid.** A mermaid board is always rendered by mermaid.
+- **It needs the network**, unless the workspace points
+  `claudeNotes.drawioUrl` at a local copy. If the user says the canvas is
+  blank or slow and they are offline, `sketchy` is the answer.
+
+### The one that will surprise you: edits freeze the board
+
+Once the user edits a draw.io board, **their version is what reopens** — a
+later write of the *same title* is ignored, so their work is never thrown
+away. That is the right trade, but it means:
+
+> **Do not build a board incrementally under one title in `drawio`.**
+> The "keep overwriting the same file while you talk" workflow below is a
+> `sketchy` technique. On the draw.io canvas, either write the board once when
+> it is finished, or name `sketchy` while you are still growing it.
+
+A new `title` always starts fresh (and archives the previous board), so a
+genuinely new board is never affected.
+
+### Authoring for this canvas
+
+- **Keep `diamond` labels short.** A diamond can only use the rectangle that
+  fits inside it, so a long label makes the shape grow tall to compensate.
+  Put the detail in `sub`, or use a `rect` and say "decision" in the `badge`.
+- **`hatch: true` fades the node here** instead of shading it. draw.io's
+  hatching is not adjustable and buries the label, so "not built yet" is
+  carried by opacity. The meaning survives; the texture does not.
+- **`badge` renders as a corner chip** and `legend` renders under the board,
+  same as sketchy. Use them — they are the cheapest way to make a board
+  self-explaining.
+- **`color`, `fill`, `textColor` on a node, and `color` / `titleColor` on a
+  frame, are all honoured.** Reach for `kind` first; these are for when a
+  board needs a colour the palette does not have.
+- **`sub` is drawn smaller and dimmer** under the label, exactly as in
+  sketchy. It is still the right place for the concrete id or value.
+
+### Telling the user
+
+The canvas is theirs to edit, and that is not obvious from looking at it. One
+line is enough: *"the board is on the panel — it is a draw.io canvas, so you
+can move things around."* If you deliberately chose `sketchy` (questions,
+offline, or an incremental board), say which, so they are not left wondering
+why this one does not behave like the last.
+
+---
+
 ## Mermaid spec
 
 ```json
@@ -288,6 +362,9 @@ re-fits the view the first time a board with a new title appears. This means
 you can build a board up in front of the user instead of writing it once at
 the end:
 
+- **This is a `sketchy` technique.** On the draw.io canvas a board freezes as
+  soon as the user edits it, so an incremental build stops updating — see
+  "The draw.io canvas" above.
 - Write an early version with just the frames and the first few nodes as soon
   as you know the shape of the answer, then keep overwriting the same file
   (same `title`) as you add nodes/edges/annotations while you keep talking.
@@ -313,6 +390,9 @@ instead of you asking in chat:
 }
 ```
 
+- **Set `"style": "sketchy"` on any board with questions.** The questions tray
+  is a panel tool and does not exist on the draw.io canvas, which is the
+  default — a question asked there cannot be answered.
 - `id` must be stable across rewrites of the same board (reuse it if you
   rewrite the board with the same open question) so the panel can tell
   "already answered" from "still pending".

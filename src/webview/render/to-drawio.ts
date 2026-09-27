@@ -94,7 +94,18 @@ const SHAPE: Record<string, Record<string, string | number>> = {
 
 function nodeCell(o: Origin, e: PlacedElement, p: Palette, sketch: boolean, parent = '1'): string {
   const spec = e.type === 'node' ? (e.spec as BoardNode) : undefined;
-  const c = colours(p, e.type === 'node' ? e.kind : e.kind);
+  /*
+   * A node may override the palette (`color`, `fill`, `textColor`). The
+   * sketchy renderer has always honoured these (paint.ts); this emitter only
+   * ever read the kind, so a board that picked its own colours opened in
+   * draw.io recoloured back to the defaults.
+   */
+  const c = {
+    ...colours(p, e.kind),
+    ...(spec?.color ? { strokeColor: toHex(spec.color) } : {}),
+    ...(spec?.fill ? { fillColor: spec.fill === 'transparent' ? 'none' : toHex(spec.fill) } : {}),
+    ...(spec?.textColor ? { fontColor: toHex(spec.textColor) } : {})
+  };
   const shape = e.type === 'node' ? SHAPE[e.shape] ?? SHAPE.rect : SHAPE.rect;
 
   const label =
@@ -301,14 +312,15 @@ export function layoutToDrawio(
       html: 1,
       fillColor: 'none',
       fillStyle: sketch ? 'solid' : undefined,
-      strokeColor: toHex(p.frameStroke),
+      // A frame may set its own `color` / `titleColor`, as it can in sketchy.
+      strokeColor: toHex(f.spec.color || p.frameStroke),
       dashed: 1,
       dashPattern: '8 6',
       verticalAlign: 'top',
       align: 'left',
       spacingLeft: 8,
       spacingTop: 4,
-      fontColor: toHex(p.frameTitle),
+      fontColor: toHex(f.spec.titleColor || p.frameTitle),
       fontSize: 12,
       fontStyle: 1,
       sketch: sketch ? 1 : undefined,
@@ -369,7 +381,9 @@ export function layoutToDrawio(
       align: a.anchor === 'end' ? 'right' : a.anchor === 'middle' ? 'center' : 'left',
       verticalAlign: 'top',
       strokeColor: 'none',
-      fillColor: 'none'
+      fillColor: 'none',
+      // A tilted margin note is a whiteboard gesture; it was being flattened.
+      rotation: a.spec.rotate ? a.spec.rotate : undefined
     });
     const w = Math.max(60, a.textW + 10);
     const x = a.anchor === 'end' ? a.x - w : a.anchor === 'middle' ? a.x - w / 2 : a.x;
@@ -390,6 +404,36 @@ export function layoutToDrawio(
         jiggle: sketch ? 2 : undefined
       });
       cells.push(cell(o, `note_${i}_rule`, '', rule, x0, y2, Math.max(8, a.textW), 1));
+    }
+
+    /*
+     * `arrowTo` is the pointer from a margin note to the thing it is about —
+     * the gesture that makes a board read as annotated rather than merely
+     * labelled. The sketchy renderer draws it as a wobbly dashed line
+     * (paint.ts); it was dropped here entirely, so every note floated
+     * unattached. As a real draw.io edge it also stays attached when the user
+     * moves either end, which the SVG version cannot do.
+     */
+    if (a.spec.arrowTo && layout.byId[a.spec.arrowTo]) {
+      const pointer = styleOf({
+        edgeStyle: 'none',
+        html: 1,
+        rounded: 1,
+        strokeColor: colour,
+        strokeWidth: 1.2,
+        dashed: 1,
+        dashPattern: '4 4',
+        endArrow: 'open',
+        endSize: 6,
+        exitPerimeter: 1,
+        sketch: sketch ? 1 : undefined,
+        jiggle: sketch ? 2 : undefined
+      });
+      cells.push(
+        `<mxCell id="note_${i}_arrow" value="" style="${esc(pointer)}" edge="1" parent="1" ` +
+          `source="note_${i}" target="${esc(a.spec.arrowTo)}">` +
+          `<mxGeometry relative="1" as="geometry"/></mxCell>`
+      );
     }
   });
 

@@ -18,6 +18,9 @@ import { layoutToDrawio } from './to-drawio.js';
  * `init`, `save`, `autosave` and `exit`.
  */
 
+/** How long to wait for the embed's `init` before saying so. */
+const HANDSHAKE_MS = 12000;
+
 export interface DrawioEvents {
   /** The user changed the diagram. `xml` is the whole mxfile. */
   onEdit(xml: string): void;
@@ -34,6 +37,8 @@ interface EmbedMessage {
 
 export class DrawioCanvas {
   private frame: HTMLIFrameElement | null = null;
+  private status: HTMLElement | null = null;
+  private timer: number | null = null;
   private ready = false;
   private pending: string | null = null;
   private listener: ((e: MessageEvent) => void) | null = null;
@@ -62,11 +67,49 @@ export class DrawioCanvas {
 
     this.listener = (e: MessageEvent) => this.onMessage(e);
     window.addEventListener('message', this.listener);
+
+    /*
+     * A remote editor can fail in ways that look identical from here —
+     * offline, a blocked origin, a proxy, a URL that is not a draw.io build.
+     * All of them used to present as an empty panel. So the canvas says what
+     * stage it reached, and after the handshake window it says so and offers
+     * a way out. Silence is never the report.
+     */
+    this.status = document.createElement('div');
+    this.status.id = 'drawio-status';
+    this.status.setAttribute('role', 'status');
+    this.setStatus(`Loading the draw.io editor from ${new URL(this.embedUrl).origin}…`);
+    this.host.appendChild(this.status);
+
+    this.timer = window.setTimeout(() => {
+      if (this.ready) return;
+      this.setStatus(
+        `The draw.io editor at ${new URL(this.embedUrl).origin} did not respond.\n\n` +
+          'It loads from the internet unless "claudeNotes.drawioUrl" points at a local copy. ' +
+          'Switch the toolbar back to Sketchy or Clean to keep working.',
+        true
+      );
+      this.events.onError?.(`No handshake from ${this.embedUrl} after ${HANDSHAKE_MS / 1000}s.`);
+    }, HANDSHAKE_MS);
+  }
+
+  private setStatus(text: string, failed = false): void {
+    if (!this.status) return;
+    this.status.textContent = text;
+    this.status.dataset.state = failed ? 'failed' : 'waiting';
+  }
+
+  private clearStatus(): void {
+    if (this.timer !== null) window.clearTimeout(this.timer);
+    this.timer = null;
+    this.status?.remove();
+    this.status = null;
   }
 
   dispose(): void {
     if (this.listener) window.removeEventListener('message', this.listener);
     this.listener = null;
+    this.clearStatus();
     this.frame?.remove();
     this.frame = null;
     this.ready = false;
@@ -109,6 +152,7 @@ export class DrawioCanvas {
     switch (data.event) {
       case 'init':
         this.ready = true;
+        this.clearStatus();
         this.post({
           action: 'configure',
           config: {

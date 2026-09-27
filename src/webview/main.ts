@@ -261,7 +261,18 @@ async function draw(): Promise<void> {
 
     if (!drawio) {
       const url = resolveEmbedUrl(document.body.dataset.drawioUrl, palette.kind !== 'light' && palette.kind !== 'high-contrast-light');
-      drawio = new DrawioCanvas(inner, url, {
+      /*
+       * MOUNTED ON <body>, NOT ON #viewport.
+       *
+       * #viewport carries the pan/zoom transform and `will-change: transform`,
+       * and either of those makes it the containing block for a
+       * position:fixed descendant. So `#drawio { position: fixed; inset: 0 }`
+       * sized itself against #viewport — which replaceChildren() had just
+       * emptied, and whose only child was then out-of-flow, so it measured
+       * 0x0. The iframe loaded, handshook and painted at zero size: exactly
+       * the "draw.io doesn't load" and the blank captures.
+       */
+      drawio = new DrawioCanvas(document.body, url, {
         onEdit: (xml) => {
           // The user's version of this board. Kept in webview state so a
           // theme change or a redraw does not throw their work away.

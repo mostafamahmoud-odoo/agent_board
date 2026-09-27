@@ -123,7 +123,19 @@ function nodeCell(o: Origin, e: PlacedElement, p: Palette, sketch: boolean, pare
      * node asks for `hatch` (pen.ts) — this is the same rule, so the two
      * renderers agree instead of one of them deciding to shade everything.
      */
-    fillStyle: sketch ? (spec?.hatch === true ? 'hachure' : 'solid') : undefined,
+    fillStyle: sketch ? 'solid' : undefined,
+    /*
+     * `hatch: true` means "not built yet". Our SketchyPen draws it as a
+     * sparse hachure it controls precisely — hachureGap 6, fillWeight 1, in
+     * the FILL colour (pen.ts). draw.io's hachure takes no options and
+     * renders in the STROKE colour at its own density, which came out as a
+     * near-solid block of bright lines with the label buried under it.
+     *
+     * So here the same meaning is carried by fading the node instead. It is
+     * a deliberate divergence: a legible "provisional" beats an illegible
+     * one that happens to use the same texture.
+     */
+    opacity: spec?.hatch === true ? 55 : undefined,
     fontSize: 12,
     strokeWidth: spec?.emphasis ? 3 : 1.5,
     fontStyle: spec?.emphasis ? 1 : undefined,

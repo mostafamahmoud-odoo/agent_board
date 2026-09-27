@@ -52,13 +52,36 @@ export interface NodeMeasure {
   subLines: string[];
 }
 
+/*
+ * A POINTED SHAPE CANNOT USE ITS WHOLE BOX.
+ *
+ * Text was wrapped to the full box width whatever the shape, with a flat
+ * +16px of height for diamonds and ellipses to paper over it. A diamond is
+ * only that wide at its exact vertical centre, so a two-line label spilled
+ * out past both points — visible in draw.io, and just as wrong in our own
+ * SVG, where it was easier to miss.
+ *
+ * The largest axis-aligned rectangle inside a rhombus of w x h satisfies
+ * `x/(w/2) + y/(h/2) <= 1`. Wrapping to `WF` of the width fixes x, which
+ * leaves `HF = 1 / (1 - WF)` of the text height for h. The ellipse case is
+ * the same with `x^2/a^2 + y^2/b^2 <= 1`.
+ *
+ * This lives in the layout, not in a renderer, so all three agree — that is
+ * the whole reason the layout stage is pure.
+ */
+const SHAPE_FIT: Partial<Record<NonNullable<BoardNode['shape']>, { wf: number; hf: number }>> = {
+  diamond: { wf: 0.62, hf: 2.65 },
+  ellipse: { wf: 0.72, hf: 1.45 }
+};
+
 export function measureNode(n: BoardNode, wHint: number | undefined, m: TextMeasurer): NodeMeasure {
   const w = n.w || wHint || DEFAULT_NODE_W;
-  const inner = w - 2 * PAD_X;
+  const fit = n.shape ? SHAPE_FIT[n.shape] : undefined;
+  const inner = (fit ? w * fit.wf : w) - 2 * PAD_X;
   const lines = wrap(n.label != null ? n.label : n.id, inner, FS_LABEL, m);
   const subLines = n.sub ? wrap(n.sub, inner, FS_SUB, m) : [];
-  let h = 2 * PAD_Y + lines.length * LH_LABEL + (subLines.length ? subLines.length * LH_SUB + 4 : 0);
-  if (n.shape === 'diamond' || n.shape === 'ellipse') h += 16;
+  const textH = lines.length * LH_LABEL + (subLines.length ? subLines.length * LH_SUB + 4 : 0);
+  let h = fit ? textH * fit.hf + PAD_Y : 2 * PAD_Y + textH;
   if (n.badge) h += 4;
   return { w, h: Math.max(n.h || 0, Math.round(h)), lines, subLines };
 }

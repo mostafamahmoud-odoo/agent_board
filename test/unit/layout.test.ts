@@ -3,7 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { BoardSpec } from '../../src/shared/types.js';
+import type { BoardNode, BoardSpec } from '../../src/shared/types.js';
+import { measureNode } from '../../src/webview/layout/measure-elements.js';
 import { createFixedMeasurer } from '../../src/webview/measure/text.js';
 import { layout } from '../../src/webview/layout/layout.js';
 
@@ -252,5 +253,59 @@ describe('a screen grows to fit its content, as SKILL.md promises (T145)', () =>
   it('treats `width` as a minimum, never a maximum', () => {
     const L = layout({ title: 't', screens: [{ id: 's', width: 900, groups: [{ fields: [{ label: 'x' }] }] }] }, m);
     expect(L.elements[0].w).toBeGreaterThanOrEqual(900);
+  });
+});
+
+describe('a pointed shape does not use its whole box', () => {
+  /*
+   * Text was wrapped to the full box width whatever the shape, with a flat
+   * +16px for diamonds and ellipses. A diamond is only that wide at its exact
+   * vertical centre, so a two-line label spilled past both points.
+   */
+  const m2 = createFixedMeasurer();
+  const node = (shape: BoardNode['shape']): BoardNode => ({
+    id: 'd',
+    shape,
+    label: 'does the draw.io canvas actually paint?',
+    sub: 'every automated capture came back blank'
+  });
+  const measure = (shape: BoardNode['shape']) => measureNode(node(shape), 270, m2);
+
+  it('wraps a diamond label to the width the diamond actually has there', () => {
+    const rect = measure('rect');
+    const dia = measure('diamond');
+    expect(dia.lines.length).toBeGreaterThan(rect.lines.length);
+  });
+
+  it('gives a diamond the height its inscribed rectangle needs', () => {
+    const dia = measure('diamond');
+    const textH = dia.lines.length * 20 + (dia.subLines.length * 15 + 4);
+    // the inscribed-rectangle bound: h >= textH / (1 - 0.62)
+    expect(dia.h).toBeGreaterThanOrEqual(textH / (1 - 0.62));
+  });
+
+  it('the label fits inside the rhombus at the text band, not just the box', () => {
+    const d = measure('diamond');
+    const halfTextH = (d.lines.length * 20 + d.subLines.length * 15 + 4) / 2;
+    // widest the rhombus is across the text band
+    const availableHalfW = (d.w / 2) * (1 - halfTextH / (d.h / 2));
+    const widestLine = Math.max(...[...d.lines, ...d.subLines].map((l) => l.length * 7));
+    expect(availableHalfW * 2).toBeGreaterThan(widestLine);
+  });
+
+  it('leaves every other shape alone', () => {
+    // Only the shapes whose usable area is smaller than their box are
+    // adjusted; a rect, a rounded rect and a pill all use the whole thing.
+    const r = measure('rect');
+    for (const shape of ['round', 'pill', 'note', 'cyl'] as const) {
+      expect(measure(shape).h, `${shape} was resized`).toBe(r.h);
+      expect(measure(shape).lines.length, `${shape} was re-wrapped`).toBe(r.lines.length);
+    }
+  });
+
+  it('an ellipse gets a box its inscribed ellipse can hold the text in', () => {
+    const e = measure('ellipse');
+    const textH = e.lines.length * 20 + (e.subLines.length ? e.subLines.length * 15 + 4 : 0);
+    expect(e.h).toBeGreaterThanOrEqual(textH * 1.4);
   });
 });

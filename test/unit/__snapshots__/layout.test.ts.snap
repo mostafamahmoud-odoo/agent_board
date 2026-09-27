@@ -5,7 +5,7 @@ exports[`golden corpus (SC-005: zero migration for existing boards) > lays out a
   "annotations": [],
   "bounds": {
     "maxX": 2042,
-    "maxY": 703,
+    "maxY": 706,
     "minX": 0,
     "minY": 0,
   },
@@ -131,7 +131,7 @@ exports[`golden corpus (SC-005: zero migration for existing boards) > lays out a
         1176,
         586,
         270,
-        59,
+        40,
       ],
       "id": "ellipse",
       "type": "node",
@@ -141,7 +141,7 @@ exports[`golden corpus (SC-005: zero migration for existing boards) > lays out a
         1466,
         586,
         270,
-        59,
+        62,
       ],
       "id": "diamond",
       "type": "node",
@@ -181,7 +181,7 @@ exports[`golden corpus (SC-005: zero migration for existing boards) > lays out a
         0,
         540,
         2042,
-        121,
+        124,
       ],
       "id": "s",
       "ids": [
@@ -198,7 +198,7 @@ exports[`golden corpus (SC-005: zero migration for existing boards) > lays out a
   "legend": {
     "w": 184.4,
     "x": 0,
-    "y": 683,
+    "y": 686,
   },
   "warnings": [],
 }

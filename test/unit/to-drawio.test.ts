@@ -210,8 +210,18 @@ describe('what the first real board exposed', () => {
     expect(a.getAttribute('style')).not.toContain('fillStyle=hachure');
   });
 
-  it('still hatches a node that asked for it', () => {
-    expect(cellById(parse(xmlFor(bad())), 'h').getAttribute('style')).toContain('fillStyle=hachure');
+  it('fades a node that asked for hatching, rather than burying its label', () => {
+    // draw.io's hachure takes no options and renders in the stroke colour at
+    // its own density — a near-solid block with the text lost under it. The
+    // meaning ("not built yet") is carried by opacity here instead.
+    const style = cellById(parse(xmlFor(bad())), 'h').getAttribute('style')!;
+    expect(style).toContain('opacity=55');
+    expect(style).toContain('fillStyle=solid');
+    expect(style).not.toContain('hachure');
+  });
+
+  it('leaves a node that did not ask for hatching at full opacity', () => {
+    expect(cellById(parse(xmlFor(bad())), 'a').getAttribute('style')).not.toContain('opacity');
   });
 
   it('leaves fillStyle alone when sketch rendering is off', () => {

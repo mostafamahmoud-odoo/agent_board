@@ -16,13 +16,19 @@ clean up: the file is scratch, overwritten on every board.
 Install from the Marketplace, open a project where you use an AI coding agent, and run
 **Agent Board: Open Panel** (`Ctrl+Alt+N` / `Cmd+Alt+N`).
 
-Then teach the agent to use it — copy `skill/SKILL.md` to either:
+Then teach your agent to use it. The board is just a JSON file, so any agent
+that can write one can drive the panel — it only needs to be told how. For
+Claude Code, copy `skill/SKILL.md` into its skills directory:
 
-- `~/.agent/skills/visual-notes/SKILL.md` — every project, or
-- `.agent/skills/visual-notes/SKILL.md` — this project only.
+- `~/.claude/skills/visual-notes/SKILL.md` — every project, or
+- `.claude/skills/visual-notes/SKILL.md` — this project only.
 
-Claude Code picks it up automatically and will start drawing during planning
-conversations instead of writing long prose.
+It is picked up automatically, and the agent will start drawing during
+planning conversations instead of writing long prose. For another agent, point
+it at `skill/SKILL.md` however that agent takes instructions — the file
+documents the whole board format, including where to write it
+(`.agent/notes.json`) and where your replies come back
+(`.agent/notes_feedback.json`).
 
 ## What you get
 
@@ -118,17 +124,19 @@ npm run compile      # check-types + lint + esbuild (two bundles)
 npm run test:unit    # fast, no DOM, no VS Code
 npm test             # integration, drives a real VS Code
 npm run package      # -> .vsix
+./verify.sh          # everything above, with real exit codes
 ```
 
 Press `F5` to launch an Extension Development Host.
 
 The layout engine is a pure function — `layout(spec, measurer) → LayoutResult`
-— with no DOM, no theme and no rough.js, so all three renderers and the
-accessibility description are drawn from one geometry. Text measurement is
+— with no DOM, no theme and no rough.js, so all four renderers (sketchy,
+clean, draw.io, mermaid) and the accessibility description are drawn from one
+geometry. Text measurement is
 injected, which is what lets layout be tested with no DOM at all. (Do not
 reach for jsdom here: it has no `getBBox`, and happy-dom returns zeros, which
 silently produces a board where everything sits at the origin.)
 
 ## License
 
-MIT
+MIT © Moustafa Mahmoud

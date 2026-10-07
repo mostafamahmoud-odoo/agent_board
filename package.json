@@ -247,10 +247,10 @@
   "icon": "media/icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mostafamahmoud-odoo/Claude_Note.git"
+    "url": "https://github.com/mostafamahmoud-odoo/agent_board.git"
   },
   "bugs": {
-    "url": "https://github.com/mostafamahmoud-odoo/Claude_Note/issues"
+    "url": "https://github.com/mostafamahmoud-odoo/agent_board/issues"
   },
-  "homepage": "https://github.com/mostafamahmoud-odoo/Claude_Note#readme"
+  "homepage": "https://github.com/mostafamahmoud-odoo/agent_board#readme"
 }

@@ -37,11 +37,14 @@ jobs:
       - id: pack
         run: |
           set -euo pipefail
+          # Derived, never spelled out: the hardcoded name survived the
+          # rename to agent-board and would have packaged under the old one.
+          NAME=$(node -p "require('./package.json').name")
           VERSION=$(node -p "require('./package.json').version")
           PRE=""
           if [ "${{ inputs.pre_release }}" = "true" ]; then PRE="--pre-release"; fi
-          npx --yes @vscode/vsce@4 package $PRE --no-dependencies -o "claude-notes-panel-${VERSION}.vsix"
-          echo "vsix=claude-notes-panel-${VERSION}.vsix" >> "$GITHUB_OUTPUT"
+          npx --yes @vscode/vsce@4 package $PRE --no-dependencies -o "${NAME}-${VERSION}.vsix"
+          echo "vsix=${NAME}-${VERSION}.vsix" >> "$GITHUB_OUTPUT"
 
       # `vsce ls` does NOT detect a missing entrypoint (verified: it exits 0
       # and just lists files). `vsce package` above does, but assert it

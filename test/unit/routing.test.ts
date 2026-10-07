@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { PlacedElement } from '../../src/webview/layout/types.js';
-import { route } from '../../src/webview/render/paint.js';
+import { annotationBox, route } from '../../src/webview/render/paint.js';
+import type { BoardSpec } from '../../src/shared/types.js';
+import { layout } from '../../src/webview/layout/layout.js';
+import { createFixedMeasurer } from '../../src/webview/measure/text.js';
 
 /**
  * Edge routing quality.
@@ -99,5 +102,84 @@ describe('routing avoids what is in the way', () => {
       expect(Number.isFinite(x)).toBe(true);
       expect(Number.isFinite(y)).toBe(true);
     }
+  });
+});
+
+describe('edges route around margin text (regression)', () => {
+  /*
+   * The router was only ever given `layout.elements`, so annotations were
+   * invisible to it and cross-frame connectors ran straight through blocks of
+   * margin text. On a real 19-node board, 9 of 16 edges struck an annotation.
+   * Text is the part a reader is trying to read; an edge through it is worse
+   * than a longer route.
+   */
+  const spec: BoardSpec = {
+    title: 'routing vs notes',
+    layout: 'columns',
+    frames: [
+      { id: 'L', title: 'LEFT', row: 1, col: 1, nodes: ['a1', 'a2'] },
+      { id: 'R', title: 'RIGHT', row: 1, col: 2, nodes: ['b1', 'b2'] }
+    ],
+    nodes: [
+      { id: 'a1', label: 'alpha' },
+      { id: 'a2', label: 'beta' },
+      { id: 'b1', label: 'gamma' },
+      { id: 'b2', label: 'delta' }
+    ],
+    edges: [
+      { from: 'a1', to: 'b2' },
+      { from: 'a2', to: 'b1' }
+    ],
+    annotations: [
+      { text: 'a long margin note that sits\nright between the two frames', at: 'a1', place: 'right' }
+    ]
+  };
+
+  /** How many edges strike annotation text, routing with or without them. */
+  const struck = (avoidAnnotations: boolean) => {
+    const L = layout(spec, createFixedMeasurer());
+    const boxes = L.annotations.map(annotationBox);
+    const obstacles = avoidAnnotations ? [...L.elements, ...boxes] : L.elements;
+    let n = 0;
+    for (const e of L.edges) {
+      const a = L.byId[e.from];
+      const b = L.byId[e.to];
+      if (!a || !b) continue;
+      const pts = route(a, b, obstacles) as [number, number][];
+      if (boxes.some((bx) => crosses(pts, bx as unknown as PlacedElement, 0))) n++;
+    }
+    return n;
+  };
+
+  it('strikes less text than routing blind to the annotations', () => {
+    // Not "zero": this fixture deliberately parks the note in the only gap
+    // between the two frames, so one edge has nowhere clean to go and the
+    // router picks the least-bad option. The claim is that knowing about the
+    // text strictly improves on not knowing — on the real 19-node board that
+    // motivated this, it took 9 struck edges down to 2.
+    expect(struck(true)).toBeLessThan(struck(false));
+  });
+
+  it('annotationBox covers the text with clearance, not just its glyph box', () => {
+    const L = layout(spec, createFixedMeasurer());
+    const a = L.annotations[0];
+    const b = annotationBox(a);
+    expect(b.w).toBeGreaterThan(a.textW);
+    expect(b.y).toBeLessThan(a.y - a.size);
+  });
+
+  it('a blocked edge takes a proportionate detour, not a lap of the board', () => {
+    // The lane is derived from the obstruction, not the endpoints — folding
+    // the endpoints in sent an edge starting in a far-left frame out past the
+    // edge of the whole board and back.
+    const L = layout(spec, createFixedMeasurer());
+    const boxes = L.annotations.map(annotationBox);
+    const a = L.byId.a1;
+    const b = L.byId.b2;
+    const pts = route(a, b, [...L.elements, ...boxes]) as [number, number][];
+    const direct = Math.hypot(b.x - a.x, b.y - a.y);
+    let len = 0;
+    for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+    expect(len).toBeLessThan(direct * 3);
   });
 });

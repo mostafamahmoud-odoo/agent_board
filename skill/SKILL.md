@@ -149,6 +149,29 @@ edge's `from`/`to`. They still render, but write the modern spelling.
 
 **legend**: `[{ "kind": ..., "label": ... }]` - drawn under the board.
 
+### Edges: fewer, shorter, local
+
+The renderer routes around boxes AND around margin text, but routing cannot
+rescue a board that asks for the impossible. These are the habits that keep a
+board readable:
+
+- **Keep an edge inside its frame, or between neighbouring frames.** An edge
+  from a node in the first column to a node in the third has to cross
+  everything in between; a handful of those turns the middle of the board into
+  a cable tray. If two things are connected, consider putting them next to
+  each other.
+- **Roughly one edge per node, not three.** A board with 19 nodes and 16 edges
+  (a real one) is at the limit. Past that, drop the edges that only restate the
+  frames' own ordering — a reader already reads top-to-bottom.
+- **Prefer an annotation to a long edge.** "comes from the estimation wizard"
+  written in the margin beside a node says what a 900px connector says, and
+  costs the board nothing.
+- **Do not route around a layout problem.** If an edge has to travel a long
+  way, that usually means the two nodes are in the wrong frames. Move the node
+  before you add the edge.
+- **`emphasis: true` on an edge is for the one that matters.** Thickening three
+  of them makes the board louder, not clearer.
+
 ### Whiteboard habits worth keeping
 - Put the concrete evidence in `sub` (`"rsv #59, approved"`, `"budg 200"`).
   Real ids are what make a sketch trustworthy.

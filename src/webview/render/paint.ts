@@ -1,5 +1,5 @@
 import type { BoardNode, Cell } from '../../shared/types.js';
-import type { LayoutResult, PlacedElement, PlacedNode, PlacedScreen, PlacedTable } from '../layout/types.js';
+import type { LayoutResult, PlacedAnnotation, PlacedNode, PlacedScreen, PlacedTable } from '../layout/types.js';
 import { kindOf, type Palette } from '../theme/palette.js';
 import {
   CELL_H,
@@ -83,6 +83,22 @@ export function paint(
     }
   }
 
+  /*
+   * EVERYTHING THE ROUTER MUST AVOID, not just the elements.
+   *
+   * Margin annotations and the legend are text the reader is meant to read;
+   * an edge drawn through them is worse than a slightly longer detour. They
+   * were never passed to route(), which is why cross-frame connectors on a
+   * dense board ran straight across the notes.
+   */
+  const obstacles: Obstacle[] = [
+    ...layout.elements,
+    ...layout.annotations.map(annotationBox),
+    ...(layout.legend
+      ? [{ id: '__legend', x: layout.legend.x, y: layout.legend.y - 14, w: layout.legend.w, h: layout.legend.h + 18 }]
+      : [])
+  ];
+
   /* edges under the boxes */
   for (const e of layout.edges) {
     const a = layout.byId[e.from];
@@ -94,7 +110,7 @@ export function paint(
       e.spec.style === 'dashed' ? [9, 6] : e.spec.style === 'dotted' ? [2.5, 4] : null;
     // Dotted lines read much fainter than solid at the same width.
     const width = (e.spec.emphasis ? 2.6 : 1.6) * (e.spec.style === 'dotted' ? 1.35 : 1);
-    const pts = route(a, b, layout.elements);
+    const pts = route(a, b, obstacles);
 
     // Stop the line short of the border so the filled head sits on it
     // instead of overlapping the box it points at.
@@ -438,7 +454,7 @@ type Pt = [number, number];
  * pair and taking the shortest is both simpler to reason about and produces
  * the route a person would draw.
  */
-function sidesOf(e: PlacedElement): Pt[] {
+function sidesOf(e: Obstacle): Pt[] {
   return [
     [e.x + e.w / 2, e.y], // top
     [e.x + e.w, e.y + e.h / 2], // right
@@ -448,7 +464,7 @@ function sidesOf(e: PlacedElement): Pt[] {
 }
 
 /** Where a line from `from` towards the element's centre meets its border. */
-function borderPoint(e: PlacedElement, from: Pt): Pt {
+function borderPoint(e: Obstacle, from: Pt): Pt {
   const cx = e.x + e.w / 2;
   const cy = e.y + e.h / 2;
   const dx = from[0] - cx;
@@ -471,7 +487,7 @@ function shrink(p: Pt, q: Pt, by: number): [Pt, Pt] {
   ];
 }
 
-function segHitsBox(p: Pt, q: Pt, e: PlacedElement, pad = 4): boolean {
+function segHitsBox(p: Pt, q: Pt, e: Obstacle, pad = 4): boolean {
   // Cheap separating-axis test against the (padded) box.
   const x0 = Math.min(p[0], q[0]);
   const x1 = Math.max(p[0], q[0]);
@@ -498,7 +514,41 @@ function segHitsBox(p: Pt, q: Pt, e: PlacedElement, pad = 4): boolean {
  * connector looked like. When that happens, escape sideways into a lane that
  * is clear of every obstacle, run the length there, and come back in.
  */
-export function route(a: PlacedElement, b: PlacedElement, all: PlacedElement[]): Pt[] {
+/**
+ * Anything the router must not draw through. Elements satisfy it structurally,
+ * and so do the synthetic boxes we build for annotations and the legend.
+ */
+export interface Obstacle {
+  id: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * The box a margin annotation occupies, in board coordinates.
+ *
+ * Annotations were invisible to the router: `route()` was only ever given
+ * `layout.elements`, so a cross-frame connector would run straight through a
+ * block of margin text. On a dense board that is the single most damaging
+ * thing an edge can do — the words are the part a reader is trying to read.
+ */
+export function annotationBox(a: PlacedAnnotation): Obstacle & { id: string } {
+  const left = a.anchor === 'end' ? a.x - a.textW : a.anchor === 'middle' ? a.x - a.textW / 2 : a.x;
+  // A little clearance on top of the glyph box: a line that merely grazes the
+  // ascenders still reads as struck through the words.
+  const PAD = 6;
+  return {
+    id: `__anno_${a.seed}`,
+    x: left - PAD,
+    y: a.y - a.size - PAD,
+    w: Math.max(a.textW, 8) + PAD * 2,
+    h: (a.lines.length - 1) * (a.size + 4) + a.size + 10 + PAD * 2
+  };
+}
+
+export function route(a: Obstacle, b: Obstacle, all: Obstacle[]): Pt[] {
   const others = all.filter((e) => e.id !== a.id && e.id !== b.id);
   const [pa, pb] = anchors(a, b, all);
   const direct = elbow(pa, pb);
@@ -516,9 +566,17 @@ export function route(a: PlacedElement, b: PlacedElement, all: PlacedElement[]):
   });
   if (!blocking.length) return direct;
 
+  /*
+   * The lane only has to clear what is BLOCKING, not the endpoints.
+   *
+   * Folding a.x / b.x into the extent meant an edge starting in a far-left
+   * frame took a lane outside the whole board, so a connector ran down the
+   * outer margin and back — visually a stray line. Clearing the obstruction
+   * is the job; the endpoints are where it starts and finishes.
+   */
   const GAP = 16;
-  const rightLane = Math.max(...blocking.map((e) => e.x + e.w), a.x + a.w, b.x + b.w) + GAP;
-  const leftLane = Math.min(...blocking.map((e) => e.x), a.x, b.x) - GAP;
+  const rightLane = Math.max(...blocking.map((e) => e.x + e.w)) + GAP;
+  const leftLane = Math.min(...blocking.map((e) => e.x)) - GAP;
   const aSide = sidesOf(a);
   const bSide = sidesOf(b);
   const vb = b.y > a.y ? bSide[0] : bSide[2];
@@ -532,13 +590,23 @@ export function route(a: PlacedElement, b: PlacedElement, all: PlacedElement[]):
     [va, [va[0], (va[1] + vb[1]) / 2], [vb[0], (va[1] + vb[1]) / 2], vb]
   ];
 
+  /*
+   * A crossing is bad; a lap of the whole board is worse.
+   *
+   * With only `crossings * 1200 + length`, a candidate that escaped into a
+   * far lane always won once anything blocked the direct route — a connector
+   * between two adjacent frames would swing out past the left edge and come
+   * back, which reads as a mistake rather than a route. Length beyond ~2.2x
+   * the direct run is therefore penalised steeply, so a detour has to be
+   * roughly proportionate to the problem it solves.
+   */
+  const directLen = routeLength(direct) || 1;
   let best = direct;
   let bestScore = Infinity;
   for (const c of candidates) {
-    // A crossing is bad, but a detour three times the length is worse than
-    // slipping behind one box, so the penalty is weighed against distance
-    // rather than dwarfing it.
-    const score = countCrossings(c, others) * 1200 + routeLength(c);
+    const len = routeLength(c);
+    const excess = Math.max(0, len - directLen * 2.2);
+    const score = countCrossings(c, others) * 1200 + len + excess * 4;
     if (score < bestScore) {
       bestScore = score;
       best = c;
@@ -547,7 +615,7 @@ export function route(a: PlacedElement, b: PlacedElement, all: PlacedElement[]):
   return best;
 }
 
-function countCrossings(route: Pt[], others: PlacedElement[]): number {
+function countCrossings(route: Pt[], others: Obstacle[]): number {
   let n = 0;
   for (let k = 1; k < route.length; k++) {
     const [sp, sq] = shrink(route[k - 1], route[k], 5);
@@ -571,7 +639,7 @@ function routeLength(route: Pt[]): number {
  * candidate routes are scored on how many OTHER elements they cross first,
  * and only then on length.
  */
-function anchors(a: PlacedElement, b: PlacedElement, all: PlacedElement[]): [Pt, Pt] {
+function anchors(a: Obstacle, b: Obstacle, all: Obstacle[]): [Pt, Pt] {
   const A = sidesOf(a);
   const B = sidesOf(b);
   const others = all.filter((e) => e.id !== a.id && e.id !== b.id);

@@ -97,7 +97,7 @@ export interface ThemeChangedMessage {
   type: 'themeChanged';
   kind: ThemeKind;
   /**
-   * claudeNotes.reducedMotion = "always". VS Code's own preference already
+   * agentBoard.reducedMotion = "always". VS Code's own preference already
    * arrives as a body class; this is the per-panel override, which the webview
    * cannot read for itself.
    */

@@ -25,7 +25,7 @@ let watcher: vscode.FileSystemWatcher | null = null;
 let ctx: vscode.ExtensionContext;
 
 function forceReducedMotion(): boolean {
-  return vscode.workspace.getConfiguration('claudeNotes').get<string>('reducedMotion', 'auto') === 'always';
+  return vscode.workspace.getConfiguration('agentBoard').get<string>('reducedMotion', 'auto') === 'always';
 }
 
 function themeKind(): ThemeKind {
@@ -42,7 +42,7 @@ function themeKind(): ThemeKind {
 }
 
 function setPanelVisibleContext(v: boolean): void {
-  void vscode.commands.executeCommand('setContext', 'claudeNotes.panelVisible', v);
+  void vscode.commands.executeCommand('setContext', 'agentBoard.panelVisible', v);
 }
 
 function openPanel(): void {
@@ -52,7 +52,7 @@ function openPanel(): void {
   }
   if (!workspaceRoot()) {
     void vscode.window.showInformationMessage(
-      'Claude Notes: open a folder first — the panel renders .claude/notes.json from the workspace root.'
+      'Agent Board: open a folder first — the panel renders .agent/notes.json from the workspace root.'
     );
     return;
   }
@@ -78,7 +78,7 @@ function attach(p: NotesPanel): void {
   if (!root) return;
 
   watcher?.dispose();
-  watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, '.claude/notes.json'));
+  watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, '.agent/notes.json'));
   const onChange = () => void store?.onFileChanged();
   watcher.onDidChange(onChange);
   watcher.onDidCreate(onChange);
@@ -103,7 +103,7 @@ async function onMessage(raw: unknown): Promise<void> {
   switch (msg.type) {
     case 'ready': {
       panel.post({ type: 'themeChanged', kind: themeKind(), forceReducedMotion: forceReducedMotion() });
-      const style = vscode.workspace.getConfiguration('claudeNotes').get<RenderStyle>('defaultStyle');
+      const style = vscode.workspace.getConfiguration('agentBoard').get<RenderStyle>('defaultStyle');
       if (style) panel.post({ type: 'setStyle', style });
       await store.render();
       panel.post({ type: 'feedbackState', data: readFeedbackSafe() });
@@ -111,7 +111,7 @@ async function onMessage(raw: unknown): Promise<void> {
       if (corruptReason()) {
         panel.post({
           type: 'error',
-          message: `The feedback log (.claude/notes_feedback.json) could not be read: ${corruptReason()}. It has been left untouched so nothing is lost — fix or delete it, then run "Claude Notes: Clear Marks".`
+          message: `The feedback log (.agent/notes_feedback.json) could not be read: ${corruptReason()}. It has been left untouched so nothing is lost — fix or delete it, then run "Agent Board: Clear Marks".`
         });
       }
       return;
@@ -168,7 +168,7 @@ async function onMessage(raw: unknown): Promise<void> {
       const name = store.saveCurrent();
       panel.post({ type: 'library', items: listLibrary() });
       vscode.window.setStatusBarMessage(
-        name ? `$(notebook) Claude Notes: saved to .claude/notes/${name}` : '$(warning) Claude Notes: nothing to save yet',
+        name ? `$(notebook) Agent Board: saved to .agent/notes/${name}` : '$(warning) Agent Board: nothing to save yet',
         4000
       );
       return;
@@ -193,14 +193,14 @@ async function onMessage(raw: unknown): Promise<void> {
         reject(msg.file);
         return;
       }
-      const label = (msg.title ? msg.title + ' - ' : '') + '.claude/notes/' + msg.file;
+      const label = (msg.title ? msg.title + ' - ' : '') + '.agent/notes/' + msg.file;
       await vscode.env.clipboard.writeText(`Let's continue from the saved note ${label}.`);
-      vscode.window.setStatusBarMessage('$(clippy) Claude Notes: mention copied — paste it in chat', 4000);
+      vscode.window.setStatusBarMessage('$(clippy) Agent Board: mention copied — paste it in chat', 4000);
       return;
     }
 
     case 'styleChanged':
-      void ctx.workspaceState.update('claudeNotes.style', msg.style);
+      void ctx.workspaceState.update('agentBoard.style', msg.style);
       return;
 
     case 'announce':
@@ -208,7 +208,7 @@ async function onMessage(raw: unknown): Promise<void> {
 
     case 'description':
       await vscode.env.clipboard.writeText(msg.text);
-      vscode.window.setStatusBarMessage('$(clippy) Claude Notes: board copied as text', 4000);
+      vscode.window.setStatusBarMessage('$(clippy) Agent Board: board copied as text', 4000);
       return;
 
     default:
@@ -219,7 +219,7 @@ async function onMessage(raw: unknown): Promise<void> {
 function reject(file: unknown): void {
   // A filename that does not resolve inside the library is dropped whole,
   // never partially handled (FR-034, SC-009).
-  console.warn('[claude-notes] rejected library filename:', file);
+  console.warn('[agent-board] rejected library filename:', file);
   panel?.post({ type: 'error', message: 'That board could not be opened.' });
 }
 
@@ -230,27 +230,27 @@ export function activate(context: vscode.ExtensionContext): void {
   const reg = (id: string, fn: () => void | Promise<void>) =>
     context.subscriptions.push(vscode.commands.registerCommand(id, fn));
 
-  reg('claudeNotes.open', openPanel);
-  reg('claudeNotes.clear', () => store?.clear());
-  reg('claudeNotes.clearFeedback', () => {
+  reg('agentBoard.open', openPanel);
+  reg('agentBoard.clear', () => store?.clear());
+  reg('agentBoard.clearFeedback', () => {
     const data = clearFeedback();
     panel?.post({ type: 'feedbackState', data });
   });
-  reg('claudeNotes.saveBoard', () => {
+  reg('agentBoard.saveBoard', () => {
     const name = store?.saveCurrent();
     panel?.post({ type: 'library', items: listLibrary() });
-    if (name) void vscode.window.showInformationMessage(`Claude Notes: saved to .claude/notes/${name}`);
-    else void vscode.window.showWarningMessage('Claude Notes: nothing to save yet.');
+    if (name) void vscode.window.showInformationMessage(`Agent Board: saved to .agent/notes/${name}`);
+    else void vscode.window.showWarningMessage('Agent Board: nothing to save yet.');
   });
-  reg('claudeNotes.handOffFeedback', handOff);
-  reg('claudeNotes.openLibrary', () => {
+  reg('agentBoard.handOffFeedback', handOff);
+  reg('agentBoard.openLibrary', () => {
     openPanel();
     panel?.post({ type: 'library', items: listLibrary() });
   });
-  reg('claudeNotes.fit', () => panel?.post({ type: 'viewport', action: 'fit' }));
-  reg('claudeNotes.resetZoom', () => panel?.post({ type: 'viewport', action: 'resetZoom' }));
-  reg('claudeNotes.copyDescription', () => panel?.post({ type: 'viewport', action: 'copyDescription' }));
-  reg('claudeNotes.setStyle', async () => {
+  reg('agentBoard.fit', () => panel?.post({ type: 'viewport', action: 'fit' }));
+  reg('agentBoard.resetZoom', () => panel?.post({ type: 'viewport', action: 'resetZoom' }));
+  reg('agentBoard.copyDescription', () => panel?.post({ type: 'viewport', action: 'copyDescription' }));
+  reg('agentBoard.setStyle', async () => {
     const pick = await vscode.window.showQuickPick(
       [
         { label: 'Sketchy', description: 'hand-drawn whiteboard', value: 'sketchy' as RenderStyle },
@@ -267,7 +267,7 @@ export function activate(context: vscode.ExtensionContext): void {
   // The per-panel reduced-motion override is a setting, so react to it too.
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration('claudeNotes.reducedMotion')) {
+      if (e.affectsConfiguration('agentBoard.reducedMotion')) {
         panel?.post({ type: 'themeChanged', kind: themeKind(), forceReducedMotion: forceReducedMotion() });
       }
     })
@@ -281,7 +281,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // A webview panel belongs to one window, so a second window shows nothing
   // even though the spec is on disk. Auto-open there, opt-out by setting.
-  if (vscode.workspace.getConfiguration('claudeNotes').get<boolean>('openOnStartup', true)) {
+  if (vscode.workspace.getConfiguration('agentBoard').get<boolean>('openOnStartup', true)) {
     const np = notesPath();
     if (np) {
       try {
@@ -304,12 +304,12 @@ export function activate(context: vscode.ExtensionContext): void {
   }
 
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-  status.command = 'claudeNotes.open';
+  status.command = 'agentBoard.open';
   const folder = watchedFolderName();
   status.text = '$(notebook) Notes';
   status.tooltip = folder
-    ? `Open the Claude Notes Panel (ctrl+alt+n) — watching the "${folder}" folder`
-    : 'Open the Claude Notes Panel (ctrl+alt+n)';
+    ? `Open the Agent Board (ctrl+alt+n) — watching the "${folder}" folder`
+    : 'Open the Agent Board (ctrl+alt+n)';
   status.show();
   context.subscriptions.push(status);
 }

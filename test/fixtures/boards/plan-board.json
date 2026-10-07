@@ -1,6 +1,6 @@
 {
   "style": "sketchy",
-  "title": "Claude Notes Panel -> production extension",
+  "title": "Agent Board -> production extension",
   "maxWidth": 1700,
   "frames": [
     {
@@ -68,7 +68,7 @@
   "nodes": [
     {
       "id": "p1",
-      "label": "Claude writes .claude/notes.json",
+      "label": "Claude writes .agent/notes.json",
       "sub": "scratch board spec, overwritten every time",
       "kind": "base",
       "badge": "channel"
@@ -90,13 +90,13 @@
     {
       "id": "p4",
       "label": "pen, stickies, questions",
-      "sub": "-> .claude/notes_feedback.json, one-way",
+      "sub": "-> .agent/notes_feedback.json, one-way",
       "kind": "base"
     },
     {
       "id": "p5",
       "label": "board library",
-      "sub": ".claude/notes/<slug>.json, auto-saved on title change",
+      "sub": ".agent/notes/<slug>.json, auto-saved on title change",
       "kind": "base",
       "shape": "cyl"
     },

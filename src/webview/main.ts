@@ -292,7 +292,7 @@ async function draw(): Promise<void> {
     if (drawioXml && drawioForTitle === spec.title) drawio.loadXml(drawioXml);
     else drawio.load(result, spec, palette, sketch);
 
-    titleEl().textContent = spec.title || 'Claude Notes';
+    titleEl().textContent = spec.title || 'Agent Board';
     banner.hidden = true;
     renderQuestions();
     return;
@@ -361,7 +361,7 @@ async function draw(): Promise<void> {
     }
   }
 
-  titleEl().textContent = spec.title || 'Claude Notes';
+  titleEl().textContent = spec.title || 'Agent Board';
   parts.styleBtn.disabled = spec.style === 'mermaid';
   parts.styleBtn.title = spec.style === 'mermaid' ? 'This board is a mermaid diagram' : `Render style: ${effective}`;
 
@@ -403,7 +403,7 @@ function renderQuestions(): void {
     if (answered.has(q.id)) {
       const done = document.createElement('div');
       done.className = 'answered';
-      done.textContent = 'answered — waiting for Claude to read it';
+      done.textContent = 'answered — waiting for your agent to read it';
       wrap.appendChild(done);
     } else {
       const ta = document.createElement('textarea');
@@ -657,7 +657,7 @@ window.addEventListener('message', (ev: MessageEvent) => {
         : 'Board actions';
       if (viewingSaved) {
         showBanner('info', 'Viewing a saved board. Live updates are paused.', undefined, [
-          { label: 'Back to live', title: 'Return to the board Claude is writing', run: () => post({ type: 'backToLive' }) },
+          { label: 'Back to live', title: 'Return to the board your agent is writing', run: () => post({ type: 'backToLive' }) },
           {
             label: 'Resume editing',
             title: 'Make this saved board the live one again',

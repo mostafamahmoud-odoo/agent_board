@@ -1,10 +1,34 @@
 # Changelog
 
-All notable changes to Claude Notes Panel.
+All notable changes to Agent Board.
 
 The Marketplace supports only `major.minor.patch` — semver pre-release tags are
 not valid. Following the documented convention, **even** minor versions are
 releases and **odd** minor versions are pre-releases.
+
+## [1.0.0] — 2026-10-07
+
+### Changed
+
+- **Renamed to Agent Board.** The extension is no longer Claude-specific: it
+  renders a board for whichever AI coding agent writes the spec.
+- **BREAKING — settings moved to `agentBoard.*`.** The old `claudeNotes.*` keys
+  are not read. Re-set anything you had customised.
+- **BREAKING — the watched directory is now `.agent/`.** The board is
+  `.agent/notes.json`, replies are `.agent/notes_feedback.json`, and the
+  library is `.agent/notes/`. Copy an existing `.claude/` directory across to
+  keep your saved boards; nothing migrates automatically.
+- **BREAKING — command ids moved to `agentBoard.*`** and their category is now
+  "Agent Board". Any keybindings you bound by id need updating.
+- The default render style is **draw.io**, so a board opens as an editable
+  canvas rather than a picture of one.
+
+### Fixed
+
+- `verify.sh` ran the unit tests before building, so the tests that read
+  `dist/` — the registered command ids, the shipped stylesheet — were checking
+  whatever bundle happened to be lying around. It now bundles first; this
+  rename passed the old order and would only have failed on the next run.
 
 ## [0.8.0] — unreleased
 
@@ -15,10 +39,10 @@ releases and **odd** minor versions are pre-releases.
   still decides where things start, so a board opens looking like the board
   Claude drew, and draw.io takes over from there. Your edits are kept per
   board.
-- `claudeNotes.drawioUrl` points at a self-hosted copy for offline use. The
+- `agentBoard.drawioUrl` points at a self-hosted copy for offline use. The
   default uses the public editor and **needs internet**; the app is ~107 MB,
   so it is deliberately not bundled.
-- `claudeNotes.drawioSketch` keeps the hand-drawn look inside draw.io.
+- `agentBoard.drawioSketch` keeps the hand-drawn look inside draw.io.
 
 ## [0.7.0] — unreleased
 
@@ -128,10 +152,10 @@ bundled, tested, and installable from the Marketplace.
 
 ### Changed
 
-- **Command titles** now use the `Claude Notes:` prefix instead of `Claude:`,
+- **Command titles** now use the `Agent Board:` prefix instead of `Claude:`,
   which claimed a namespace this extension does not own and collided with
   Claude Code's own palette entries. Command **ids** are unchanged.
-- **Activation** is now `workspaceContains:.claude/notes.json` rather than
+- **Activation** is now `workspaceContains:.agent/notes.json` rather than
   `onStartupFinished`, which fired in every window regardless.
 - **Mermaid is loaded on demand.** It was fetched synchronously on every panel
   open — 3.3 MB, before anything else could run — even though most boards never

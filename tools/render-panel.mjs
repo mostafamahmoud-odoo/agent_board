@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { JSDOM } from 'jsdom';
 
-const root = '/home/mostafa/Claude_Note/claude-notes-ext';
+const root = '/home/mostafa/Claude_Note/agent-board-ext';
 const board = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 const out = process.argv[3];
 const theme = process.argv[4] || 'vscode-dark';

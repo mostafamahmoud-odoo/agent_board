@@ -485,7 +485,7 @@ export function layoutToDrawio(
     `<root>${cells.join('')}</root></mxGraphModel>`;
 
   return (
-    `<mxfile host="claude-notes-panel" type="embed">` +
+    `<mxfile host="agent-board" type="embed">` +
     `<diagram id="board" name="${esc(title)}">${model}</diagram></mxfile>`
   );
 }

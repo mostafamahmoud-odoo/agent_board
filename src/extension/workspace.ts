@@ -22,10 +22,10 @@ export function watchedFolderName(): string | undefined {
   return multi ? f.name : undefined;
 }
 
-function claudeDir(): string | undefined {
+function agentDir(): string | undefined {
   const root = workspaceRoot();
   if (!root) return undefined;
-  const dir = path.join(root.uri.fsPath, '.claude');
+  const dir = path.join(root.uri.fsPath, '.agent');
   try {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   } catch {
@@ -35,17 +35,17 @@ function claudeDir(): string | undefined {
 }
 
 export function notesPath(): string | undefined {
-  const dir = claudeDir();
+  const dir = agentDir();
   return dir ? path.join(dir, 'notes.json') : undefined;
 }
 
 export function feedbackPath(): string | undefined {
-  const dir = claudeDir();
+  const dir = agentDir();
   return dir ? path.join(dir, 'notes_feedback.json') : undefined;
 }
 
 export function libraryDir(): string | undefined {
-  const dir = claudeDir();
+  const dir = agentDir();
   if (!dir) return undefined;
   const sub = path.join(dir, 'notes');
   try {
@@ -58,7 +58,7 @@ export function libraryDir(): string | undefined {
 
 /**
  * In a workspace the user has not trusted, the extension renders read-only:
- * no writes to .claude/, no library saves, no mermaid. Declared in
+ * no writes to .agent/, no library saves, no mermaid. Declared in
  * package.json `capabilities.untrustedWorkspaces` as "limited".
  */
 export function isWritable(): boolean {

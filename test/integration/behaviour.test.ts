@@ -9,14 +9,14 @@ import * as vscode from 'vscode';
  * and the bounds on the feedback log.
  */
 
-const EXT_ID = 'local.claude-notes-panel';
+const EXT_ID = 'local.agent-board';
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-function claudeDir(): string {
-  return path.join(vscode.workspace.workspaceFolders![0].uri.fsPath, '.claude');
+function agentDir(): string {
+  return path.join(vscode.workspace.workspaceFolders![0].uri.fsPath, '.agent');
 }
 function p(rel: string): string {
-  return path.join(claudeDir(), rel);
+  return path.join(agentDir(), rel);
 }
 function write(rel: string, text: string): void {
   fs.mkdirSync(path.dirname(p(rel)), { recursive: true });
@@ -33,7 +33,7 @@ suite('write coalescing and ordering (FR-038)', () => {
   suiteSetup(async function () {
     this.timeout(60_000);
     await vscode.extensions.getExtension(EXT_ID)!.activate();
-    await vscode.commands.executeCommand('claudeNotes.open');
+    await vscode.commands.executeCommand('agentBoard.open');
     await sleep(500);
   });
 
@@ -60,7 +60,7 @@ suite('write coalescing and ordering (FR-038)', () => {
 
     // Reveal it again; queued messages must flush rather than having been
     // dropped (vscode.d.ts: a hidden webview cannot be messaged).
-    await vscode.commands.executeCommand('claudeNotes.open');
+    await vscode.commands.executeCommand('agentBoard.open');
     await sleep(800);
     // No assertion on pixels is possible here; the contract is that revealing
     // does not throw and the board on disk is intact.
@@ -72,7 +72,7 @@ suite('write coalescing and ordering (FR-038)', () => {
 suite('atomic writes (FR-010)', () => {
   test('the feedback log is never observed half-written', async function () {
     this.timeout(60_000);
-    await vscode.commands.executeCommand('claudeNotes.clearFeedback');
+    await vscode.commands.executeCommand('agentBoard.clearFeedback');
     await sleep(300);
 
     // Poll the file while the extension writes it. Every observation must be
@@ -92,7 +92,7 @@ suite('atomic writes (FR-010)', () => {
     }, 5);
 
     while (Date.now() < stop) {
-      await vscode.commands.executeCommand('claudeNotes.clearFeedback');
+      await vscode.commands.executeCommand('agentBoard.clearFeedback');
       await sleep(40);
     }
     clearInterval(poll);
@@ -134,7 +134,7 @@ suite('feedback bounds (FR-014, SC-008)', () => {
     );
 
     // The bound is applied on the next append, which needs the panel open.
-    await vscode.commands.executeCommand('claudeNotes.open');
+    await vscode.commands.executeCommand('agentBoard.open');
     await sleep(400);
 
     const log = JSON.parse(fs.readFileSync(p('notes_feedback.json'), 'utf8'));
@@ -143,7 +143,7 @@ suite('feedback bounds (FR-014, SC-008)', () => {
     // the pending answers.
     assert.strictEqual(log.answers.length, 5, 'pending answers must survive a read');
 
-    await vscode.commands.executeCommand('claudeNotes.clearFeedback');
+    await vscode.commands.executeCommand('agentBoard.clearFeedback');
     await sleep(300);
     const cleared = JSON.parse(fs.readFileSync(p('notes_feedback.json'), 'utf8'));
     assert.deepStrictEqual(cleared.drawings, []);
@@ -189,11 +189,11 @@ suite('settings are honoured', () => {
     // Read the declared defaults from the manifest rather than restating
     // them: the hardcoded copy asserted 'sketchy' and simply broke when the
     // default changed, which tested the old value, not the claim.
-    const cfg = vscode.workspace.getConfiguration('claudeNotes');
+    const cfg = vscode.workspace.getConfiguration('agentBoard');
     const declared = vscode.extensions.getExtension(EXT_ID)!.packageJSON.contributes.configuration
       .properties as Record<string, { default: unknown }>;
     for (const [key, prop] of Object.entries(declared)) {
-      const short = key.replace(/^claudeNotes\./, '');
+      const short = key.replace(/^agentBoard\./, '');
       assert.deepStrictEqual(cfg.get(short), prop.default, `${key} does not read back its declared default`);
     }
   });

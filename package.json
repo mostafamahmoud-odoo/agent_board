@@ -1,8 +1,8 @@
 {
-  "name": "claude-notes-panel",
-  "displayName": "Claude Notes Panel",
-  "description": "Renders Claude's planning notes as an editable board: an embedded draw.io canvas by default, or a hand-drawn whiteboard (frames, sticky notes, margin annotations) or a mermaid diagram in a side panel, with pan/zoom and fit-to-panel.",
-  "version": "0.9.2",
+  "name": "agent-board",
+  "displayName": "Agent Board",
+  "description": "Turns an AI coding agent's planning notes into a live, editable board \u2014 an embedded draw.io canvas, a hand-drawn whiteboard, or a mermaid diagram \u2014 with pen, sticky notes and inline answers that go back to the agent.",
+  "version": "1.0.0",
   "license": "MIT",
   "publisher": "local",
   "engines": {
@@ -15,70 +15,70 @@
   ],
   "main": "./dist/extension.js",
   "activationEvents": [
-    "workspaceContains:.claude/notes.json"
+    "workspaceContains:.agent/notes.json"
   ],
   "contributes": {
     "commands": [
       {
-        "command": "claudeNotes.open",
+        "command": "agentBoard.open",
         "title": "Open Panel",
-        "category": "Claude Notes"
+        "category": "Agent Board"
       },
       {
-        "command": "claudeNotes.clear",
+        "command": "agentBoard.clear",
         "title": "Clear Board",
-        "category": "Claude Notes",
-        "enablement": "claudeNotes.panelVisible"
+        "category": "Agent Board",
+        "enablement": "agentBoard.panelVisible"
       },
       {
-        "command": "claudeNotes.clearFeedback",
+        "command": "agentBoard.clearFeedback",
         "title": "Clear Marks (answers, pen, stickies)",
-        "category": "Claude Notes"
+        "category": "Agent Board"
       },
       {
-        "command": "claudeNotes.saveBoard",
+        "command": "agentBoard.saveBoard",
         "title": "Save Board to Library",
-        "category": "Claude Notes",
-        "enablement": "claudeNotes.panelVisible"
+        "category": "Agent Board",
+        "enablement": "agentBoard.panelVisible"
       },
       {
-        "command": "claudeNotes.openLibrary",
+        "command": "agentBoard.openLibrary",
         "title": "Browse Board Library",
-        "category": "Claude Notes"
+        "category": "Agent Board"
       },
       {
-        "command": "claudeNotes.setStyle",
+        "command": "agentBoard.setStyle",
         "title": "Change Render Style...",
-        "category": "Claude Notes",
-        "enablement": "claudeNotes.panelVisible"
+        "category": "Agent Board",
+        "enablement": "agentBoard.panelVisible"
       },
       {
-        "command": "claudeNotes.fit",
+        "command": "agentBoard.fit",
         "title": "Fit Board to Panel",
-        "category": "Claude Notes",
-        "enablement": "claudeNotes.panelVisible"
+        "category": "Agent Board",
+        "enablement": "agentBoard.panelVisible"
       },
       {
-        "command": "claudeNotes.resetZoom",
+        "command": "agentBoard.resetZoom",
         "title": "Reset Zoom to 100%",
-        "category": "Claude Notes",
-        "enablement": "claudeNotes.panelVisible"
+        "category": "Agent Board",
+        "enablement": "agentBoard.panelVisible"
       },
       {
-        "command": "claudeNotes.copyDescription",
+        "command": "agentBoard.copyDescription",
         "title": "Copy Board as Text",
-        "category": "Claude Notes",
-        "enablement": "claudeNotes.panelVisible"
+        "category": "Agent Board",
+        "enablement": "agentBoard.panelVisible"
       },
       {
-        "command": "claudeNotes.handOffFeedback",
-        "title": "Copy Pending Replies for Claude",
-        "category": "Claude Notes"
+        "command": "agentBoard.handOffFeedback",
+        "title": "Copy Pending Replies for your agent",
+        "category": "Agent Board"
       }
     ],
     "keybindings": [
       {
-        "command": "claudeNotes.open",
+        "command": "agentBoard.open",
         "key": "ctrl+alt+n",
         "mac": "cmd+alt+n"
       }
@@ -86,35 +86,35 @@
     "menus": {
       "commandPalette": [
         {
-          "command": "claudeNotes.clear",
-          "when": "claudeNotes.panelVisible"
+          "command": "agentBoard.clear",
+          "when": "agentBoard.panelVisible"
         },
         {
-          "command": "claudeNotes.saveBoard",
-          "when": "claudeNotes.panelVisible"
+          "command": "agentBoard.saveBoard",
+          "when": "agentBoard.panelVisible"
         },
         {
-          "command": "claudeNotes.setStyle",
-          "when": "claudeNotes.panelVisible"
+          "command": "agentBoard.setStyle",
+          "when": "agentBoard.panelVisible"
         },
         {
-          "command": "claudeNotes.fit",
-          "when": "claudeNotes.panelVisible"
+          "command": "agentBoard.fit",
+          "when": "agentBoard.panelVisible"
         },
         {
-          "command": "claudeNotes.resetZoom",
-          "when": "claudeNotes.panelVisible"
+          "command": "agentBoard.resetZoom",
+          "when": "agentBoard.panelVisible"
         },
         {
-          "command": "claudeNotes.copyDescription",
-          "when": "claudeNotes.panelVisible"
+          "command": "agentBoard.copyDescription",
+          "when": "agentBoard.panelVisible"
         }
       ]
     },
     "configuration": {
-      "title": "Claude Notes",
+      "title": "Agent Board",
       "properties": {
-        "claudeNotes.defaultStyle": {
+        "agentBoard.defaultStyle": {
           "type": "string",
           "enum": [
             "drawio",
@@ -124,36 +124,36 @@
           ],
           "default": "drawio",
           "enumDescriptions": [
-            "draw.io \u2014 a full editing canvas (needs internet, or claudeNotes.drawioUrl)",
+            "draw.io \u2014 a full editing canvas (needs internet, or agentBoard.drawioUrl)",
             "Hand-drawn whiteboard, rendered in the panel",
             "Precise SVG, for sharing",
             "Formal graph types"
           ],
-          "markdownDescription": "Render style used when a board does not declare one. `drawio` is the default: it is a real editing canvas, so a board can be reworked rather than only read. It loads from the internet unless `claudeNotes.drawioUrl` points at a local copy \u2014 set this to `sketchy` to stay entirely offline."
+          "markdownDescription": "Render style used when a board does not declare one. `drawio` is the default: it is a real editing canvas, so a board can be reworked rather than only read. It loads from the internet unless `agentBoard.drawioUrl` points at a local copy \u2014 set this to `sketchy` to stay entirely offline."
         },
-        "claudeNotes.openOnStartup": {
+        "agentBoard.openOnStartup": {
           "type": "boolean",
           "default": true,
           "description": "Open the panel automatically when the workspace already has a board. A webview panel belongs to one window, so a second window shows nothing without this."
         },
-        "claudeNotes.notifyOnFeedback": {
+        "agentBoard.notifyOnFeedback": {
           "type": "boolean",
           "default": true,
-          "description": "Show a notification when an answer, note or drawing is captured, with a one-click handoff to Claude."
+          "description": "Show a notification when an answer, note or drawing is captured, with a one-click handoff back to the agent."
         },
-        "claudeNotes.feedback.maxEntries": {
+        "agentBoard.feedback.maxEntries": {
           "type": "number",
           "default": 500,
           "minimum": 10,
-          "description": "Maximum entries kept in .claude/notes_feedback.json. Consumed entries are pruned first, oldest first; a pending answer is never dropped to make room."
+          "description": "Maximum entries kept in .agent/notes_feedback.json. Consumed entries are pruned first, oldest first; a pending answer is never dropped to make room."
         },
-        "claudeNotes.library.maxEntries": {
+        "agentBoard.library.maxEntries": {
           "type": "number",
           "default": 200,
           "minimum": 10,
-          "description": "Maximum boards kept in .claude/notes/."
+          "description": "Maximum boards kept in .agent/notes/."
         },
-        "claudeNotes.reducedMotion": {
+        "agentBoard.reducedMotion": {
           "type": "string",
           "enum": [
             "auto",
@@ -166,12 +166,12 @@
           ],
           "description": "VS Code already owns this preference; 'always' forces motion off for this panel alone."
         },
-        "claudeNotes.drawioUrl": {
+        "agentBoard.drawioUrl": {
           "type": "string",
           "default": "",
           "markdownDescription": "Where the draw.io editor is served from. Empty uses `https://embed.diagrams.net/`, which **requires internet**. For offline use, serve a copy of the draw.io web app and point this at it (for example `http://127.0.0.1:8080/`). The app is ~107 MB and is deliberately not bundled."
         },
-        "claudeNotes.drawioSketch": {
+        "agentBoard.drawioSketch": {
           "type": "boolean",
           "default": true,
           "description": "Use draw.io's hand-drawn rendering, so a board keeps the whiteboard look."
@@ -219,9 +219,9 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": "limited",
-      "description": "In a restricted workspace the panel renders boards read-only: it will not write to .claude/, save to the library, or render mermaid.",
+      "description": "In a restricted workspace the panel renders boards read-only: it will not write to .agent/, save to the library, or render mermaid.",
       "restrictedConfigurations": [
-        "claudeNotes.openOnStartup"
+        "agentBoard.openOnStartup"
       ]
     },
     "virtualWorkspaces": {
@@ -230,12 +230,13 @@
     }
   },
   "keywords": [
-    "claude",
+    "ai",
+    "agent",
     "diagram",
     "whiteboard",
+    "drawio",
     "mermaid",
     "sketch",
-    "ai",
     "notes",
     "visualization"
   ],
@@ -246,10 +247,10 @@
   "icon": "media/icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/REPLACE-ME/claude-notes-panel.git"
+    "url": "https://github.com/REPLACE-ME/agent-board.git"
   },
   "bugs": {
-    "url": "https://github.com/REPLACE-ME/claude-notes-panel/issues"
+    "url": "https://github.com/REPLACE-ME/agent-board/issues"
   },
-  "homepage": "https://github.com/REPLACE-ME/claude-notes-panel#readme"
+  "homepage": "https://github.com/REPLACE-ME/agent-board#readme"
 }

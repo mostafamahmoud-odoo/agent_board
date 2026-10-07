@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/claude-notes-panel/schemas/board.schema.json",
-  "title": "Claude Notes board spec",
-  "description": "The document an agent writes to .claude/notes.json (scratch, overwritten per board) or that is archived to .claude/notes/<slug>.json. Additional properties are permitted everywhere on purpose: a newer skill must be able to talk to an older panel (FR-012).",
+  "$id": "https://github.com/agent-board/schemas/board.schema.json",
+  "title": "Agent Board board spec",
+  "description": "The document an agent writes to .agent/notes.json (scratch, overwritten per board) or that is archived to .agent/notes/<slug>.json. Additional properties are permitted everywhere on purpose: a newer skill must be able to talk to an older panel (FR-012).",
   "$comment": "TWO-TIER VALIDATION (FR-008 + FR-011). This file is the AUTHORING contract: editors should autocomplete from it and flag every violation. The RUNTIME validator must not treat every violation as fatal, or one typo'd `kind` would blank an entire board. Implementations compile TWO validators from this file: (1) FATAL - the document is an object, `title` is a non-empty string, `style` is a known value, and `style: mermaid` has `code`. A failure here posts `error` and nothing renders. (2) WARNING - everything else in this schema, including the `kind` and `shape` enums, plus the reference checks JSON Schema cannot express (an edge pointing at a missing id, an element in a missing frame). A failure here posts a normal `render` carrying `warnings`, so the valid part of the board still draws and the unknown value falls back (`kind` to `base`, `shape` to `rect`) with a reported warning rather than silently. See data-model.md V2, V3, V7.",
   "type": "object",
   "required": [

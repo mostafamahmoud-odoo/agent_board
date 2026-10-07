@@ -1,48 +1,55 @@
-# Claude Notes Panel
+# Agent Board
 
-When Claude is planning, comparing options, or walking you through a bug, it
+When an AI coding agent is planning, comparing options, or walking you through a bug, it
 usually has to write a wall of text. This extension gives it a whiteboard
 instead.
 
-Claude writes a small JSON spec to `.claude/notes.json`; the panel watches that
-file and renders it live — as a hand-drawn board, a precise diagram, or a
-mermaid graph. Nothing is left behind for you to clean up: the file is scratch,
-overwritten on every board.
+The agent writes a small JSON spec to `.agent/notes.json`; the panel watches
+that file and renders it live — as an editable draw.io canvas, a hand-drawn
+board, a precise diagram, or a mermaid graph. Nothing is left behind for you to
+clean up: the file is scratch, overwritten on every board.
 
 ![the board](media/icon.png)
 
 ## Install
 
-Install from the Marketplace, open a project where you use Claude Code, and run
-**Claude Notes: Open Panel** (`Ctrl+Alt+N` / `Cmd+Alt+N`).
+Install from the Marketplace, open a project where you use an AI coding agent, and run
+**Agent Board: Open Panel** (`Ctrl+Alt+N` / `Cmd+Alt+N`).
 
-Then teach Claude to use it — copy `skill/SKILL.md` to either:
+Then teach the agent to use it — copy `skill/SKILL.md` to either:
 
-- `~/.claude/skills/visual-notes/SKILL.md` — every project, or
-- `.claude/skills/visual-notes/SKILL.md` — this project only.
+- `~/.agent/skills/visual-notes/SKILL.md` — every project, or
+- `.agent/skills/visual-notes/SKILL.md` — this project only.
 
 Claude Code picks it up automatically and will start drawing during planning
 conversations instead of writing long prose.
 
 ## What you get
 
-**Three styles over one board.** The hand-drawn style reads as
-thinking-in-progress, which is right for a live discussion. Switch to **clean**
-from the toolbar when you want to paste the same board into a ticket or a
-design review — identical layout, precise strokes. **Mermaid** is there for the
-formal graph types (sequence, state, ER, gantt).
+**Four styles over one board.** The agent writes the board once; the toolbar
+decides what draws it, with the same layout every time.
 
-**Frames, tables and screens.** Boards are not just boxes and arrows: Claude
+- **draw.io** (default) opens the board in an embedded editor, so you can move,
+  restyle and reconnect anything on it — not just read it. It loads from the
+  internet unless you point `agentBoard.drawioUrl` at a local copy.
+- **sketchy** is the hand-drawn board, rendered in the panel itself. It reads as
+  thinking-in-progress, and it is the one with the pen, sticky notes and the
+  questions tray.
+- **clean** is the same board with precise strokes, for pasting into a ticket
+  or a design review.
+- **mermaid** is there for the formal graph types (sequence, state, ER, gantt).
+
+**Frames, tables and screens.** Boards are not just boxes and arrows: the agent
 can draw a labelled region, a record list with a specific row tinted red, or a
 form view — so "the bug is on line 3887" can be *shown* rather than described.
 
-**You can answer back.** Claude can leave questions on the board; you answer in
+**You can answer back.** The agent can leave questions on the board; you answer in
 the panel. You can also draw on it with the pen and drop sticky notes. Anything
-you leave is captured to `.claude/notes_feedback.json`, and VS Code offers to
-copy it in a form you can paste straight back to Claude.
+you leave is captured to `.agent/notes_feedback.json`, and VS Code offers to
+copy it in a form you can paste straight back to the agent.
 
 **A per-project library.** Boards worth keeping are archived to
-`.claude/notes/`. When Claude replaces the live board with a differently-titled
+`.agent/notes/`. When the agent replaces the live board with a differently-titled
 one, the outgoing board is saved first, so nothing is silently lost. Commit
 that directory if you want the history to travel with the repo, or gitignore it
 if it is personal scratch.
@@ -65,26 +72,28 @@ to screen readers.
 | `Escape` | Close a tray, or leave pen/note mode |
 | `Ctrl+Enter` | Submit the answer you are typing |
 
-**Claude Notes: Copy Board as Text** puts the same description the screen
+**Agent Board: Copy Board as Text** puts the same description the screen
 reader gets on your clipboard — useful for pasting a board into a ticket.
 
 ## Settings
 
 | Setting | Default | |
 |---|---|---|
-| `claudeNotes.defaultStyle` | `sketchy` | Style for boards that do not declare one |
-| `claudeNotes.openOnStartup` | `true` | Open automatically when a board already exists |
-| `claudeNotes.notifyOnFeedback` | `true` | Tell you when a reply is captured |
-| `claudeNotes.feedback.maxEntries` | `500` | Bound on the feedback log |
-| `claudeNotes.library.maxEntries` | `200` | Bound on the board library |
-| `claudeNotes.reducedMotion` | `auto` | `auto` follows VS Code's `workbench.reduceMotion` |
+| `agentBoard.defaultStyle` | `drawio` | Style for boards that do not declare one |
+| `agentBoard.openOnStartup` | `true` | Open automatically when a board already exists |
+| `agentBoard.notifyOnFeedback` | `true` | Tell you when a reply is captured |
+| `agentBoard.feedback.maxEntries` | `500` | Bound on the feedback log |
+| `agentBoard.library.maxEntries` | `200` | Bound on the board library |
+| `agentBoard.reducedMotion` | `auto` | `auto` follows VS Code's `workbench.reduceMotion` |
+| `agentBoard.drawioUrl` | *(empty)* | Where the draw.io editor is served from; empty uses the public host |
+| `agentBoard.drawioSketch` | `true` | Use draw.io's hand-drawn rendering |
 
 ## Good to know
 
-**The channel to Claude is one-way.** Anything you leave in the panel sits in
-`.claude/notes_feedback.json` until Claude is next invoked — there is no live
-socket. The notification's **Copy for Claude** action is the fastest way to
-hand it over; otherwise just tell Claude to check the board.
+**The channel back is one-way.** Anything you leave in the panel sits in
+`.agent/notes_feedback.json` until the agent is next invoked — there is no live
+socket. The notification's **Copy for your agent** action is the fastest way to
+hand it over; otherwise just tell the agent to check the board.
 
 **Theming and contrast.** Every colour comes from your theme's own tokens, and
 the palette is checked against WCAG AA for all seven semantic kinds across
@@ -96,7 +105,7 @@ colour-vision differences.
 bar names which one.
 
 **Restricted workspaces.** In a workspace you have not trusted, the panel
-renders read-only: it will not write to `.claude/`, save to the library, or run
+renders read-only: it will not write to `.agent/`, save to the library, or run
 mermaid.
 
 ## Developing

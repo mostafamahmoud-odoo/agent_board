@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { JSDOM } from 'jsdom';
 
-const root = '/home/mostafa/Claude_Note/claude-notes-ext';
+const root = '/home/mostafa/Claude_Note/agent-board-ext';
 const board = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 const style = process.argv[3] || 'sketchy';
 const out = process.argv[4];

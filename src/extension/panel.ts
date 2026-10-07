@@ -20,7 +20,7 @@ import type { HostToWebview } from '../shared/protocol.js';
  * never worth delivering.
  */
 
-const VIEW_TYPE = 'claudeNotes';
+const VIEW_TYPE = 'agentBoard';
 
 export class NotesPanel {
   private queue: HostToWebview[] = [];
@@ -42,7 +42,7 @@ export class NotesPanel {
   static create(extensionUri: vscode.Uri): NotesPanel {
     const panel = vscode.window.createWebviewPanel(
       VIEW_TYPE,
-      'Claude Notes',
+      'Agent Board',
       { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
       NotesPanel.webviewOptions(extensionUri)
     );
@@ -132,7 +132,7 @@ export class NotesPanel {
      * NOTE: a nonce must NOT be added to style-src as well — a nonce makes
      * 'unsafe-inline' be ignored, which would put us straight back.
      */
-    const embed = vscode.workspace.getConfiguration('claudeNotes').get<string>('drawioUrl', '') ||
+    const embed = vscode.workspace.getConfiguration('agentBoard').get<string>('drawioUrl', '') ||
       'https://embed.diagrams.net/';
     const frameOrigin = (() => {
       try {
@@ -166,7 +166,7 @@ export class NotesPanel {
       .replace(/{{styleUri}}/g, uri('dist', 'webview.css'))
       .replace(/{{mermaidUri}}/g, uri('media', 'vendor', 'mermaid.min.js'))
       .replace(/{{drawioUrl}}/g, embed)
-      .replace(/{{drawioSketch}}/g, String(vscode.workspace.getConfiguration('claudeNotes').get<boolean>('drawioSketch', true)));
+      .replace(/{{drawioSketch}}/g, String(vscode.workspace.getConfiguration('agentBoard').get<boolean>('drawioSketch', true)));
   }
 }
 
@@ -181,7 +181,7 @@ export function makeNonce(): string {
 const FALLBACK_SHELL = `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="{{csp}}">
-<link rel="stylesheet" href="{{styleUri}}"><title>Claude Notes</title></head>
+<link rel="stylesheet" href="{{styleUri}}"><title>Agent Board</title></head>
 <body><div id="app"></div><script type="module" nonce="{{nonce}}" src="{{scriptUri}}"></script></body></html>`;
 
 export { VIEW_TYPE };

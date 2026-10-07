@@ -3,6 +3,7 @@ node_modules/
 *.zip
 .vscode-test/
 .claude/
+.agent/
 dist/
 out/
 coverage/

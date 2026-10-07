@@ -157,7 +157,9 @@ describe('the toolbar is actually wired to its stylesheet', () => {
     ];
     // Elements only present under a particular render style are asserted
     // where that style is tested, not here.
-    const conditional = new Set(['drawio']);
+    // Both belong to the draw.io canvas, which mounts on <body> only while
+    // that style is active; the drawio tests assert them.
+    const conditional = new Set(['drawio', 'drawio-status']);
     const missing = ids.filter((id) => !conditional.has(id) && !h.doc.getElementById(id));
     expect(missing, `stylesheet targets ids that do not exist: ${missing.join(', ')}`).toEqual([]);
   });
@@ -587,7 +589,7 @@ describe('the board renders at all', () => {
   });
 
   it('shows the questions button when the board has questions', () => {
-    expect(h.btn('Questions from Claude').hidden).toBe(false);
+    expect(h.btn('Questions from your agent').hidden).toBe(false);
   });
 
   it('drops a superseded render', async () => {

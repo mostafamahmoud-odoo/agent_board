@@ -94,7 +94,7 @@ export interface Bounds {
 }
 
 function limits(): Bounds {
-  const cfg = vscode.workspace.getConfiguration('claudeNotes');
+  const cfg = vscode.workspace.getConfiguration('agentBoard');
   return { maxEntries: Math.max(10, cfg.get<number>('feedback.maxEntries', 500)) };
 }
 

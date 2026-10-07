@@ -75,7 +75,7 @@ export function buildToolbar(): ToolbarParts {
   boardBtn.className = 'tb-label';
   boardBtn.setAttribute('aria-haspopup', 'menu');
   boardBtn.setAttribute('aria-expanded', 'false');
-  boardBtn.innerHTML = `<span id="title">Claude Notes</span><span id="folder"></span>${svgIcon(ICON.chevron, 14)}`;
+  boardBtn.innerHTML = `<span id="title">Agent Board</span><span id="folder"></span>${svgIcon(ICON.chevron, 14)}`;
 
   const select = iconButton('cursor', 'Select', 'V');
   select.dataset.tool = 'select';
@@ -96,7 +96,7 @@ export function buildToolbar(): ToolbarParts {
   styleBtn.setAttribute('aria-haspopup', 'menu');
   styleBtn.setAttribute('aria-expanded', 'false');
 
-  const questionsBtn = iconButton('question', 'Questions from Claude');
+  const questionsBtn = iconButton('question', 'Questions from your agent');
   questionsBtn.id = 'qbtn';
   questionsBtn.setAttribute('aria-expanded', 'false');
   questionsBtn.setAttribute('aria-controls', 'qpanel');

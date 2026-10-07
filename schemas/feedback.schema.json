@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/claude-notes-panel/schemas/feedback.schema.json",
-  "title": "Claude Notes feedback log",
-  "description": "The one-way channel from the panel back to the agent, at .claude/notes_feedback.json. The agent only sees it when next invoked, so every entry must be self-contained and durable. NOTE FOR IMPLEMENTERS: a parse failure of this file MUST NOT cause it to be overwritten (FR-035) - the current code returns an empty object on a catch and the next append writes it back, destroying every captured answer.",
+  "$id": "https://github.com/agent-board/schemas/feedback.schema.json",
+  "title": "Agent Board feedback log",
+  "description": "The one-way channel from the panel back to the agent, at .agent/notes_feedback.json. The agent only sees it when next invoked, so every entry must be self-contained and durable. NOTE FOR IMPLEMENTERS: a parse failure of this file MUST NOT cause it to be overwritten (FR-035) - the current code returns an empty object on a catch and the next append writes it back, destroying every captured answer.",
   "type": "object",
   "required": ["answers", "drawings", "stickies"],
   "additionalProperties": true,
@@ -90,5 +90,5 @@
     }
   },
 
-  "$comment": "COORDINATE SEMANTICS: x/y in 'sticky' and the points in 'drawing' are board-pixel coordinates from the layout that was live when the mark was made. A re-layout shifts everything, so they mean 'roughly here', never exact geometry. An agent reading this file should treat a drawing as 'the user circled something around here' and ask if it cannot tell what a stroke points at. BOUNDS: the log is capped by claudeNotes.feedback.maxEntries; consumed entries are pruned first, oldest first (SC-008)."
+  "$comment": "COORDINATE SEMANTICS: x/y in 'sticky' and the points in 'drawing' are board-pixel coordinates from the layout that was live when the mark was made. A re-layout shifts everything, so they mean 'roughly here', never exact geometry. An agent reading this file should treat a drawing as 'the user circled something around here' and ask if it cannot tell what a stroke points at. BOUNDS: the log is capped by agentBoard.feedback.maxEntries; consumed entries are pruned first, oldest first (SC-008)."
 }

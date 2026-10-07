@@ -12,15 +12,15 @@ import * as vscode from 'vscode';
  * extension actually enforces it on disk.
  */
 
-const EXT_ID = 'local.claude-notes-panel';
+const EXT_ID = 'local.agent-board';
 
-function claudeDir(): string {
+function agentDir(): string {
   const root = vscode.workspace.workspaceFolders![0].uri.fsPath;
-  return path.join(root, '.claude');
+  return path.join(root, '.agent');
 }
 
 function write(rel: string, text: string): string {
-  const p = path.join(claudeDir(), rel);
+  const p = path.join(agentDir(), rel);
   fs.mkdirSync(path.dirname(p), { recursive: true });
   fs.writeFileSync(p, text);
   return p;
@@ -64,7 +64,7 @@ suite('activation', () => {
   });
 
   test('activates on workspaceContains, not on startup', () => {
-    assert.deepStrictEqual(ext.packageJSON.activationEvents, ['workspaceContains:.claude/notes.json']);
+    assert.deepStrictEqual(ext.packageJSON.activationEvents, ['workspaceContains:.agent/notes.json']);
   });
 });
 
@@ -76,7 +76,7 @@ suite('the panel', () => {
 
   test('opens without throwing', async function () {
     this.timeout(30_000);
-    await vscode.commands.executeCommand('claudeNotes.open');
+    await vscode.commands.executeCommand('agentBoard.open');
     // executeCommand resolves when the HANDLER returns, not when the webview
     // has painted — so this asserts "did not throw", nothing about content.
     await sleep(500);
@@ -84,8 +84,8 @@ suite('the panel', () => {
 
   test('opening twice reveals rather than creating a second panel', async function () {
     this.timeout(30_000);
-    await vscode.commands.executeCommand('claudeNotes.open');
-    await vscode.commands.executeCommand('claudeNotes.open');
+    await vscode.commands.executeCommand('agentBoard.open');
+    await vscode.commands.executeCommand('agentBoard.open');
     await sleep(300);
   });
 
@@ -129,9 +129,9 @@ suite('feedback durability (FR-035)', () => {
 
   test('clearing marks writes a valid empty log', async function () {
     this.timeout(30_000);
-    await vscode.commands.executeCommand('claudeNotes.clearFeedback');
+    await vscode.commands.executeCommand('agentBoard.clearFeedback');
     await sleep(400);
-    const p = path.join(claudeDir(), 'notes_feedback.json');
+    const p = path.join(agentDir(), 'notes_feedback.json');
     const parsed = JSON.parse(fs.readFileSync(p, 'utf8'));
     assert.deepStrictEqual(parsed.answers, []);
     assert.deepStrictEqual(parsed.drawings, []);
@@ -140,7 +140,7 @@ suite('feedback durability (FR-035)', () => {
 });
 
 suite('library containment (FR-034, SC-009)', () => {
-  test('a traversal filename cannot read or write outside .claude/notes', async () => {
+  test('a traversal filename cannot read or write outside .agent/notes', async () => {
     const { resolveInLibrary } = (await import('../../src/extension/library.js')) as {
       resolveInLibrary(f: unknown): string | undefined;
     };
@@ -166,21 +166,21 @@ suite('library containment (FR-034, SC-009)', () => {
     };
     const ok = resolveInLibrary('board.json');
     assert.ok(ok, 'a normal filename was rejected');
-    assert.ok(ok!.startsWith(path.join(claudeDir(), 'notes')), 'resolved outside the library directory');
+    assert.ok(ok!.startsWith(path.join(agentDir(), 'notes')), 'resolved outside the library directory');
   });
 });
 
 suite('library bounds (FR-039, SC-010)', () => {
   test('repeated saves of one board produce one file, not one per save', async function () {
     this.timeout(60_000);
-    const dir = path.join(claudeDir(), 'notes');
+    const dir = path.join(agentDir(), 'notes');
     fs.mkdirSync(dir, { recursive: true });
     for (const f of fs.readdirSync(dir)) fs.unlinkSync(path.join(dir, f));
 
     for (let i = 0; i < 12; i++) {
       write('notes.json', JSON.stringify({ title: 'one board', nodes: [{ id: 'a', label: `v${i}` }] }));
       await sleep(120);
-      await vscode.commands.executeCommand('claudeNotes.saveBoard');
+      await vscode.commands.executeCommand('agentBoard.saveBoard');
       await sleep(120);
     }
     // Count only THIS board's slug. Other files in the directory are the

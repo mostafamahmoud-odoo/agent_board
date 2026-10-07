@@ -108,7 +108,7 @@ describe('the style list cannot drift from the type (regression)', () => {
 
   it('the settings enum offers exactly the declared styles', () => {
     const manifest = JSON.parse(fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
-    const enumValues = manifest.contributes.configuration.properties['claudeNotes.defaultStyle'].enum;
+    const enumValues = manifest.contributes.configuration.properties['agentBoard.defaultStyle'].enum;
     expect([...enumValues].sort()).toEqual([...RENDER_STYLES].sort());
   });
 });

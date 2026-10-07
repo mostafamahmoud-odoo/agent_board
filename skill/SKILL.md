@@ -1,14 +1,14 @@
 ---
 name: visual-notes
-description: Use during planning, architecture, or comparison discussions instead of writing long prose explanations. Emits a compact diagram spec to .claude/notes.json which the "Claude Notes Panel" VS Code extension renders live as a hand-drawn whiteboard (rough.js) or a mermaid diagram. Trigger whenever you would otherwise write more than ~5 lines of explanatory prose about structure, flow, comparisons, or brainstorm options during a discussion (not for final code/file output).
+description: Use during planning, architecture, or comparison discussions instead of writing long prose explanations. Emits a compact diagram spec to .agent/notes.json which the "Agent Board" VS Code extension renders live as a hand-drawn whiteboard (rough.js) or a mermaid diagram. Trigger whenever you would otherwise write more than ~5 lines of explanatory prose about structure, flow, comparisons, or brainstorm options during a discussion (not for final code/file output).
 ---
 
-# Visual Notes (Claude Notes Panel)
+# Visual Notes (Agent Board)
 
 When a planning/discussion answer would otherwise be a wall of text describing
 structure, flow, options, or trade-offs, write a JSON spec to
-`.claude/notes.json` in the workspace root instead. The user's VS Code
-"Claude Notes Panel" extension watches this file and renders it live in a side
+`.agent/notes.json` in the workspace root instead. The user's VS Code
+"Agent Board" extension watches this file and renders it live in a side
 panel with pan/zoom and fit-to-panel. Do NOT create this as a project file for
 the user to keep - overwrite it each time, it is a scratch/display channel, not
 a deliverable.
@@ -40,7 +40,7 @@ unless one of these applies.
 - **drawio** (the panel default): the board opens in an embedded draw.io
   editor, so the user can move, restyle and connect things rather than only
   read them. Our layout still decides where everything starts. It loads from
-  the internet unless the workspace points `claudeNotes.drawioUrl` at a local
+  the internet unless the workspace points `agentBoard.drawioUrl` at a local
   copy, and the pen, sticky notes and questions tray do not exist there — so
   if you are **asking a question on the board**, name `sketchy` explicitly.
 - **sketchy**: the whiteboard, rendered in the panel itself. Hand-drawn
@@ -279,7 +279,7 @@ handful of places where the canvas behaves differently from the SVG one.
   user has no way to answer in the panel.
 - **No `code` / mermaid.** A mermaid board is always rendered by mermaid.
 - **It needs the network**, unless the workspace points
-  `claudeNotes.drawioUrl` at a local copy. If the user says the canvas is
+  `agentBoard.drawioUrl` at a local copy. If the user says the canvas is
   blank or slow and they are offline, `sketchy` is the answer.
 
 ### The one that will surprise you: edits freeze the board
@@ -340,7 +340,7 @@ the shape with the top-level direction instead.
 
 ## Workflow
 1. Decide the spec (frames + nodes + edges + annotations, or mermaid code).
-2. Write it to `.claude/notes.json` (overwrite, do not append).
+2. Write it to `.agent/notes.json` (overwrite, do not append).
 3. In your chat reply keep prose SHORT - a sentence or two pointing at the
    panel, not a re-explanation of the diagram.
 4. If the user has not opened the panel yet, tell them to run
@@ -356,7 +356,7 @@ board to the project's note library) and `Library` (browse saved boards).
 
 ## Live/incremental rendering
 
-The panel re-renders on every write to `.claude/notes.json`, and now preserves
+The panel re-renders on every write to `.agent/notes.json`, and now preserves
 pan/zoom across re-renders of the *same* board (same `title`) - it only
 re-fits the view the first time a board with a new title appears. This means
 you can build a board up in front of the user instead of writing it once at
@@ -398,18 +398,18 @@ instead of you asking in chat:
   "already answered" from "still pending".
 - The user answers in the panel's `Questions` button/tray. There is
   **no live push back to you** - the answer is written to
-  `.claude/notes_feedback.json` in the workspace root and just sits there
+  `.agent/notes_feedback.json` in the workspace root and just sits there
   until you are invoked again (a new message from the user, or a scheduled
   wakeup) and read the file.
 - Because of that, don't silently wait: tell the user in your chat reply that
   you left a question on the board and to answer there (or in chat, either
   works), and if this is a long-running/background task, poll
-  `.claude/notes_feedback.json` on a schedule rather than assuming you'll be
+  `.agent/notes_feedback.json` on a schedule rather than assuming you'll be
   notified.
 
 ## Reading what the user left on the board
 
-`.claude/notes_feedback.json` accumulates everything the user has done in the
+`.agent/notes_feedback.json` accumulates everything the user has done in the
 panel since it was last cleared:
 
 ```json
@@ -437,11 +437,11 @@ panel since it was last cleared:
 
 ## Persisting a board (project note library)
 
-`.claude/notes.json` is scratch - it gets overwritten on the next board and
+`.agent/notes.json` is scratch - it gets overwritten on the next board and
 is not meant to survive. If a board is worth keeping around (a plan the user
 will want to reopen later, a decision record, a diagram you'll want to refer
 back to in a future session), write a **second copy** into
-`.claude/notes/<slug>.json` in the workspace root (create the directory if it
+`.agent/notes/<slug>.json` in the workspace root (create the directory if it
 doesn't exist) - same JSON schema as `notes.json`, just saved rather than
 scratch. Pick a filename from the title, e.g. `migration-plan.json`; if one
 already exists for this exact board, overwrite it, otherwise use a new name
@@ -452,18 +452,18 @@ rather than clobbering an older unrelated save.
   that are clearly worth keeping.
 - The extension also auto-saves for you: whenever you overwrite
   `notes.json` with a board whose `title` differs from the one already
-  showing, the panel archives the outgoing board to `.claude/notes/` first.
+  showing, the panel archives the outgoing board to `.agent/notes/` first.
   So a board only needs an explicit save while it's still being grown under
   the same title - the moment you move on to a new title, the old one is
   already safe.
-- The panel's `Library` button lists every file in `.claude/notes/` (title +
+- The panel's `Library` button lists every file in `.agent/notes/` (title +
   saved time) and can reopen any of them read-only in the panel, resume one
   as the live/editable board, or copy a short "continue from this note"
   mention to the clipboard for the user to paste into chat.
 - To resume a past discussion yourself: read the relevant file directly from
-  `.claude/notes/` (the user may reference one by title, or paste the
+  `.agent/notes/` (the user may reference one by title, or paste the
   mention text the panel copied for them, which names the file) - there is
   no other channel that tells you which one they mean.
-- Don't proactively enumerate or read every file in `.claude/notes/` unless
+- Don't proactively enumerate or read every file in `.agent/notes/` unless
   asked - treat it as a library the user browses, not something to summarize
   unprompted.

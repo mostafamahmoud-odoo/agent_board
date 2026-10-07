@@ -8,7 +8,7 @@ import { writeJsonAtomic } from './fsAtomic.js';
 import { isWritable, libraryDir } from './workspace.js';
 
 /**
- * The per-project board library at `.claude/notes/<slug>.json`.
+ * The per-project board library at `.agent/notes/<slug>.json`.
  *
  * Two defects this module fixes:
  *
@@ -118,7 +118,7 @@ export function listLibrary(): LibraryEntry[] {
 }
 
 function maxEntries(): number {
-  return Math.max(10, vscode.workspace.getConfiguration('claudeNotes').get<number>('library.maxEntries', 200));
+  return Math.max(10, vscode.workspace.getConfiguration('agentBoard').get<number>('library.maxEntries', 200));
 }
 
 function enforceBound(): void {

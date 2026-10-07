@@ -16,12 +16,16 @@ run() {
 }
 run "check-types" npm run check-types
 run "lint"        npm run lint
+# BUNDLE BEFORE UNIT. Some unit tests read dist/ — the built command ids, the
+# shipped stylesheet — so running them first checked whatever bundle happened
+# to be lying around. A rename passed here and only failed on the next run.
+run "bundle"      node esbuild.mjs
 run "unit"        npx vitest run
 run "compile"     npm run compile-tests
 run "integration" timeout 900 npx vscode-test
 run "real mouse"  timeout 400 node tools/browser/real-mouse.mjs
 run "mermaid"     timeout 400 node tools/browser/probe.mjs
-run "package"     npx --yes @vscode/vsce@4 package --no-dependencies -o /tmp/claude-notes-panel.vsix
+run "package"     npx --yes @vscode/vsce@4 package --no-dependencies -o /tmp/agent-board.vsix
 echo "----"
 if [ "$FAILED" = 1 ]; then echo "VERIFICATION FAILED"; exit 1; fi
 echo "all green"

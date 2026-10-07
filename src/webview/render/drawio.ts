@@ -85,7 +85,7 @@ export class DrawioCanvas {
       if (this.ready) return;
       this.setStatus(
         `The draw.io editor at ${new URL(this.embedUrl).origin} did not respond.\n\n` +
-          'It loads from the internet unless "claudeNotes.drawioUrl" points at a local copy. ' +
+          'It loads from the internet unless "agentBoard.drawioUrl" points at a local copy. ' +
           'Switch the toolbar back to Sketchy or Clean to keep working.',
         true
       );

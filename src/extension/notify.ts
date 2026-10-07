@@ -7,7 +7,7 @@ import { markAllConsumed, pendingCount, readFeedbackSafe } from './feedback.js';
  * Closes the loop with the *user* (FR-031, FR-032).
  *
  * The channel to the agent stays one-way and file-based, so any agent that can
- * read `.claude/notes_feedback.json` keeps working (FR-033). What was missing
+ * read `.agent/notes_feedback.json` keeps working (FR-033). What was missing
  * is that answering felt like it did nothing: the reply sat in a file until
  * the agent happened to be invoked again. Now VS Code says the reply was
  * captured and offers a one-click handoff.
@@ -25,12 +25,12 @@ function truncate(s: string, n: number): string {
 }
 
 export async function notifyCaptured(kind: FeedbackKind, payload: unknown): Promise<void> {
-  const cfg = vscode.workspace.getConfiguration('claudeNotes');
+  const cfg = vscode.workspace.getConfiguration('agentBoard');
   if (!cfg.get<boolean>('notifyOnFeedback', true)) return;
 
   const pending = pendingCount();
-  const msg = `${describe(kind, payload)} — ${pending} reply${pending === 1 ? '' : 'ies'} waiting for Claude.`;
-  const COPY = 'Copy for Claude';
+  const msg = `${describe(kind, payload)} — ${pending} reply${pending === 1 ? '' : 'ies'} waiting for your agent.`;
+  const COPY = 'Copy for your agent';
   const MUTE = 'Stop telling me';
 
   const choice = await vscode.window.showInformationMessage(msg, COPY, MUTE);
@@ -50,7 +50,7 @@ export async function handOff(): Promise<void> {
   const drawings = log.drawings.filter((d) => !d.consumed);
 
   if (!answers.length && !stickies.length && !drawings.length) {
-    void vscode.window.showInformationMessage('Claude Notes: nothing new on the board.');
+    void vscode.window.showInformationMessage('Agent Board: nothing new on the board.');
     return;
   }
 
@@ -65,7 +65,7 @@ export async function handOff(): Promise<void> {
       `- ${drawings.length} pen mark${drawings.length === 1 ? '' : 's'} on the board (coordinates are approximate; ask if it is not clear what they point at).`
     );
   }
-  lines.push('', 'They are in .claude/notes_feedback.json.');
+  lines.push('', 'They are in .agent/notes_feedback.json.');
 
   await vscode.env.clipboard.writeText(lines.join('\n'));
   try {
@@ -73,5 +73,5 @@ export async function handOff(): Promise<void> {
   } catch {
     /* a corrupt log is reported elsewhere; the clipboard copy still stands */
   }
-  vscode.window.setStatusBarMessage('$(clippy) Claude Notes: replies copied — paste them to Claude', 4000);
+  vscode.window.setStatusBarMessage('$(clippy) Agent Board: replies copied — paste them to your agent', 4000);
 }

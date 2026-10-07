@@ -126,7 +126,7 @@ describe('the built bundle', () => {
   });
 
   it('sets the panelVisible context key false at activation', () => {
-    expect(stub.contextKeys['claudeNotes.panelVisible']).toBe(false);
+    expect(stub.contextKeys['agentBoard.panelVisible']).toBe(false);
   });
 
   it('deactivates without throwing', () => {

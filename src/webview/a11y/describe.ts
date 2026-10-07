@@ -10,7 +10,7 @@ import { cellText } from '../layout/measure-elements.js';
  * description built from the spec would announce declaration order, which is
  * arbitrary.
  *
- * Also exposed as `Claude Notes: Copy Board as Text`, so the accessible path
+ * Also exposed as `Agent Board: Copy Board as Text`, so the accessible path
  * is exercised by sighted users too and is far less likely to rot.
  */
 

@@ -4,7 +4,7 @@ import * as path from 'node:path';
 /**
  * Write-to-temp-then-rename (FR-010).
  *
- * Every write to `.claude/` goes through here. Plain writeFileSync let a
+ * Every write to `.agent/` goes through here. Plain writeFileSync let a
  * reader observe a half-written file, which is how the feedback log got
  * corrupted in the first place — and a corrupt feedback log used to be
  * silently replaced with an empty one, destroying every captured answer.

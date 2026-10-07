@@ -124,7 +124,7 @@ export class BoardStore {
       try {
         fs.writeFileSync(p, '');
       } catch {
-        void vscode.window.showWarningMessage('Claude Notes: could not clear .claude/notes.json.');
+        void vscode.window.showWarningMessage('Agent Board: could not clear .agent/notes.json.');
       }
     }
     this.viewingSaved = null;

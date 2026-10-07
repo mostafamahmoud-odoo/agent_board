@@ -12,7 +12,7 @@ import * as vscode from 'vscode';
  * extension actually enforces it on disk.
  */
 
-const EXT_ID = 'local.agent-board';
+const EXT_ID = 'MostafaMahmoud.agent-board';
 
 function agentDir(): string {
   const root = vscode.workspace.workspaceFolders![0].uri.fsPath;

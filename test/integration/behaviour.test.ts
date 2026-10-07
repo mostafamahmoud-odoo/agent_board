@@ -9,7 +9,7 @@ import * as vscode from 'vscode';
  * and the bounds on the feedback log.
  */
 
-const EXT_ID = 'local.agent-board';
+const EXT_ID = 'MostafaMahmoud.agent-board';
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 function agentDir(): string {

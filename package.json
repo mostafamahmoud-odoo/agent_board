@@ -4,7 +4,7 @@
   "description": "Turns an AI coding agent's planning notes into a live, editable board \u2014 an embedded draw.io canvas, a hand-drawn whiteboard, or a mermaid diagram \u2014 with pen, sticky notes and inline answers that go back to the agent.",
   "version": "1.0.0",
   "license": "MIT",
-  "publisher": "local",
+  "publisher": "MostafaMahmoud",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -247,10 +247,10 @@
   "icon": "media/icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/REPLACE-ME/agent-board.git"
+    "url": "https://github.com/mostafamahmoud-odoo/Claude_Note.git"
   },
   "bugs": {
-    "url": "https://github.com/REPLACE-ME/agent-board/issues"
+    "url": "https://github.com/mostafamahmoud-odoo/Claude_Note/issues"
   },
-  "homepage": "https://github.com/REPLACE-ME/agent-board#readme"
+  "homepage": "https://github.com/mostafamahmoud-odoo/Claude_Note#readme"
 }

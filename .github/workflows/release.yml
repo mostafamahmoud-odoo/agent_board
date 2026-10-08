@@ -65,6 +65,10 @@ jobs:
 
   publish-marketplace:
     needs: build
+    # Trusted publishing has to be set up on the Marketplace publisher before
+    # this can work. Until then an unguarded run just fails the tag. Flip the
+    # repo variable PUBLISH_REGISTRIES to "true" once the policy exists.
+    if: vars.PUBLISH_REGISTRIES == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -81,6 +85,7 @@ jobs:
 
   publish-openvsx:
     needs: build
+    if: vars.PUBLISH_REGISTRIES == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -95,3 +100,32 @@ jobs:
       - run: npx --yes ovsx@1 publish "${{ needs.build.outputs.vsix }}" --trusted-publishing
         env:
           OVSX_TIMEOUT: '120000'
+
+  # The GitHub Release is what people actually download from while the
+  # Marketplace listing does not exist yet. It needs no secret: Actions issues
+  # GITHUB_TOKEN automatically, and `contents: write` is what lets it publish.
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with: { name: vsix }
+      - name: Publish the GitHub Release with the VSIX attached
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VSIX: ${{ needs.build.outputs.vsix }}
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          gh release create "$GITHUB_REF_NAME" "$VSIX" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Agent Board $VERSION" \
+            --notes "Install: download the .vsix below, then in VS Code run **Extensions: Install from VSIX…** from the command palette.
+
+          Then teach your agent to use it — copy \`skill/SKILL.md\` from this repo into your agent's skills directory (for Claude Code: \`~/.claude/skills/visual-notes/SKILL.md\`).
+
+          MIT licensed. No telemetry."

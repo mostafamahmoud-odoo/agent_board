@@ -2,7 +2,7 @@
   "name": "agent-board",
   "displayName": "Agent Board",
   "description": "Turns an AI coding agent's planning notes into a live, editable board \u2014 an embedded draw.io canvas, a hand-drawn whiteboard, or a mermaid diagram \u2014 with pen, sticky notes and inline answers that go back to the agent.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "license": "MIT",
   "publisher": "MostafaMahmoud",
   "engines": {

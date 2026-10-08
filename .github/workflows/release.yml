@@ -104,6 +104,9 @@ jobs:
   # The GitHub Release is what people actually download from while the
   # Marketplace listing does not exist yet. It needs no secret: Actions issues
   # GITHUB_TOKEN automatically, and `contents: write` is what lets it publish.
+  # The GitHub Release is what people download from while there is no
+  # Marketplace listing. It needs no secret: Actions issues GITHUB_TOKEN
+  # automatically, and `contents: write` is what lets it publish.
   release:
     needs: build
     if: startsWith(github.ref, 'refs/tags/v')
@@ -113,19 +116,51 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: actions/download-artifact@v4
-        with: { name: vsix }
-      - name: Publish the GitHub Release with the VSIX attached
+        with:
+          name: vsix
+          path: dist-vsix
+
+      # v1.1.0 published a Release with NO asset attached and still reported
+      # success, so the failure was invisible until someone clicked Download.
+      # Find the file ourselves instead of trusting a passed-through output,
+      # and refuse to continue if it is not there.
+      - name: Locate the VSIX
+        id: find
+        run: |
+          set -euo pipefail
+          ls -la dist-vsix || true
+          VSIX="$(find dist-vsix -name '*.vsix' -type f | head -1)"
+          if [ -z "$VSIX" ]; then
+            echo "::error::no .vsix in the build artifact — nothing to attach"
+            exit 1
+          fi
+          echo "found $VSIX ($(stat -c%s "$VSIX") bytes)"
+          echo "path=$VSIX" >> "$GITHUB_OUTPUT"
+
+      - name: Publish the Release with the VSIX attached
         env:
           GH_TOKEN: ${{ github.token }}
-          VSIX: ${{ needs.build.outputs.vsix }}
+          VSIX: ${{ steps.find.outputs.path }}
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
+          printf '%s\n' \
+            "Download the .vsix below, then in VS Code run **Extensions: Install from VSIX...** from the command palette." \
+            "" \
+            "Then teach your agent to use it: copy skill/SKILL.md from this repo into your agent's skills directory (for Claude Code, ~/.claude/skills/visual-notes/SKILL.md)." \
+            "" \
+            "MIT licensed. No telemetry." > notes.md
           gh release create "$GITHUB_REF_NAME" "$VSIX" \
             --repo "$GITHUB_REPOSITORY" \
             --title "Agent Board $VERSION" \
-            --notes "Install: download the .vsix below, then in VS Code run **Extensions: Install from VSIX…** from the command palette.
+            --notes-file notes.md
 
-          Then teach your agent to use it — copy \`skill/SKILL.md\` from this repo into your agent's skills directory (for Claude Code: \`~/.claude/skills/visual-notes/SKILL.md\`).
-
-          MIT licensed. No telemetry."
+      # Assert the asset is actually on the Release. Creating it is not proof.
+      - name: Verify the asset is attached
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          NAMES="$(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')"
+          echo "assets on the release: ${NAMES:-<none>}"
+          echo "$NAMES" | grep -q '\.vsix$' || { echo "::error::Release published with no .vsix attached"; exit 1; }

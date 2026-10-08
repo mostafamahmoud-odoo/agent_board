@@ -32,3 +32,9 @@ tools/**
 !skill/**
 !LICENSE
 !CHANGELOG.md
+
+# Full-resolution artwork lives in art/ and never ships. It is OUTSIDE media/
+# on purpose: `!media/**` above re-includes that whole directory, and an
+# exclusion listed after it did not win — the 1.6 MB source was packaged
+# anyway. Keeping the source out of the re-included tree is what actually works.
+art/**

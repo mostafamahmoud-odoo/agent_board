@@ -147,7 +147,20 @@ jobs:
           echo "found $VSIX ($(stat -c%s "$VSIX") bytes)"
           echo "path=$VSIX" >> "$GITHUB_OUTPUT"
 
-      - name: Publish the Release with the VSIX attached
+      # The skill is the other half of the product — without it the agent
+      # never writes a board. Shipping only the .vsix meant cloning the repo
+      # to get it. The zip keeps the `visual-notes/` directory name, because
+      # that name is the path the agent looks under.
+      - name: Package the skill
+        run: |
+          set -euo pipefail
+          rm -rf skillpkg && mkdir -p skillpkg/visual-notes
+          cp skill/SKILL.md skillpkg/visual-notes/SKILL.md
+          (cd skillpkg && zip -qr ../visual-notes-skill.zip visual-notes)
+          cp skill/SKILL.md ./SKILL.md
+          ls -la visual-notes-skill.zip SKILL.md
+
+      - name: Publish the Release with the VSIX and the skill attached
         env:
           GH_TOKEN: ${{ github.token }}
           VSIX: ${{ steps.find.outputs.path }}
@@ -155,17 +168,32 @@ jobs:
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
           printf '%s\n' \
-            "Download the .vsix below, then in VS Code run **Extensions: Install from VSIX...** from the command palette." \
+            "**1. The extension.** Download \`agent-board-$VERSION.vsix\` below, then in VS Code run **Extensions: Install from VSIX...** from the command palette." \
             "" \
-            "Then teach your agent to use it: copy skill/SKILL.md from this repo into your agent's skills directory (for Claude Code, ~/.claude/skills/visual-notes/SKILL.md)." \
+            "**2. The skill.** Download \`visual-notes-skill.zip\` and unzip it into your agent's skills directory, so you end up with:" \
+            "" \
+            "    ~/.claude/skills/visual-notes/SKILL.md" \
+            "" \
+            "(For Claude Code that path is picked up automatically. For another agent, point it at SKILL.md however that agent takes instructions.)" \
+            "" \
+            "Both halves are needed: the extension renders the board, the skill is what teaches the agent to write one." \
             "" \
             "MIT licensed. No telemetry." > notes.md
-          gh release create "$GITHUB_REF_NAME" "$VSIX" \
-            --repo "$GITHUB_REPOSITORY" \
-            --title "Agent Board $VERSION" \
-            --notes-file notes.md
 
-      # Assert the asset is actually on the Release. Creating it is not proof.
+          # Re-runnable: a re-pushed tag must update the existing Release
+          # rather than fail on "already exists" and leave it half-populated.
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+              --title "Agent Board $VERSION" --notes-file notes.md
+            gh release upload "$GITHUB_REF_NAME" "$VSIX" visual-notes-skill.zip SKILL.md \
+              --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "$VSIX" visual-notes-skill.zip SKILL.md \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "Agent Board $VERSION" \
+              --notes-file notes.md
+          fi
+
       - name: Verify the asset is attached
         env:
           GH_TOKEN: ${{ github.token }}
@@ -173,4 +201,6 @@ jobs:
           set -euo pipefail
           NAMES="$(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')"
           echo "assets on the release: ${NAMES:-<none>}"
-          echo "$NAMES" | grep -q '\.vsix$' || { echo "::error::Release published with no .vsix attached"; exit 1; }
+          echo "$NAMES" | grep -q '\.vsix$'            || { echo "::error::Release has no .vsix attached"; exit 1; }
+          echo "$NAMES" | grep -q 'visual-notes-skill\.zip' || { echo "::error::Release has no skill zip attached"; exit 1; }
+          echo "$NAMES" | grep -qx 'SKILL.md'           || { echo "::error::Release has no SKILL.md attached"; exit 1; }
